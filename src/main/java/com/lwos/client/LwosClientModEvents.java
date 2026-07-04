@@ -2,6 +2,7 @@ package com.lwos.client;
 
 import com.lwos.LwosMod;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -15,5 +16,10 @@ public final class LwosClientModEvents {
         event.register(LwosKeyMappings.TOGGLE_MODE);
         event.register(LwosKeyMappings.DELETE_POINT);
         event.register(LwosKeyMappings.CANCEL_PATH);
+    }
+
+    @SubscribeEvent
+    public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
+        event.registerAboveAll("tool_wheel", ToolWheelOverlay.INSTANCE);
     }
 }
