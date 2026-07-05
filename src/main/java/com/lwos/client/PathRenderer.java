@@ -26,6 +26,10 @@ import java.util.List;
 public final class PathRenderer {
     private static final double SAMPLE_SPACING = 0.25; // blocks between curve samples
     private static final double GIZMO = 0.15;          // half-size of a control-point box
+    // WorldView.surfaceHeight() returns the topmost SOLID block's index (e.g. 64), so the visible
+    // surface (top face) is at index+1. Lift the drawn curve/ribbon just above it so RenderType.lines
+    // (depth-tested) isn't occluded by the ground block it would otherwise be buried inside.
+    private static final double SURFACE_DRAW_OFFSET = 1.05;
 
     private PathRenderer() { }
 
@@ -66,7 +70,7 @@ public final class PathRenderer {
         List<com.lwos.geometry.PathSample> raw =
                 com.lwos.geometry.PathSampler.sampleWithWidth(positions, SAMPLE_SPACING, width);
         List<com.lwos.geometry.PathSample> grounded =
-                com.lwos.geometry.TerrainSampler.snapToSurface(raw, ForgeWorldView.INSTANCE, 0.05);
+                com.lwos.geometry.TerrainSampler.snapToSurface(raw, ForgeWorldView.INSTANCE, SURFACE_DRAW_OFFSET);
 
         List<Vec3d> centerline = new ArrayList<>(grounded.size());
         for (com.lwos.geometry.PathSample s : grounded) centerline.add(s.position());
