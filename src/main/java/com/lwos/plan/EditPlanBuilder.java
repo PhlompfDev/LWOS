@@ -1,6 +1,6 @@
 package com.lwos.plan;
 
-import com.lwos.config.OrganicTunables;
+import com.lwos.config.PathStyle;
 import com.lwos.geometry.ColumnPos;
 import com.lwos.geometry.PathMask;
 import com.lwos.geometry.PathSample;
@@ -9,6 +9,7 @@ import com.lwos.geometry.TerrainSampler;
 import com.lwos.geometry.Vec3d;
 import com.lwos.geometry.WorldView;
 import com.lwos.organic.BlendEngine;
+import com.lwos.organic.EdgeBandEngine;
 import com.lwos.organic.EdgeShaper;
 import com.lwos.organic.GradientEngine;
 
@@ -55,30 +56,31 @@ public final class EditPlanBuilder {
     private static final long EDGE_SALT = 0xD1B54A32D192ED03L;
     private static final long GRAD_SALT = 0xA0761D6478BD642FL;
     private static final long BLEND_SALT = 0xE7037ED1A0B428DBL;
+    private static final long BAND_SALT = 0xC2B2AE3D27D4EB4FL;
 
     private EditPlanBuilder() { }
 
     /** Builds in the default {@link TerrainMode#FOLLOW_SURFACE} mode with the real organic look. */
     public static EditPlan build(List<Vec3d> controlPoints, double spacing, double width, WorldView view) {
-        return build(controlPoints, spacing, width, view, TerrainMode.FOLLOW_SURFACE, OrganicTunables.defaults());
+        return build(controlPoints, spacing, width, view, TerrainMode.FOLLOW_SURFACE, PathStyle.defaults());
     }
 
-    /** Builds in {@code mode} with the real organic look ({@link OrganicTunables#defaults()}). */
+    /** Builds in {@code mode} with the real organic look ({@link PathStyle#defaults()}). */
     public static EditPlan build(List<Vec3d> controlPoints, double spacing, double width,
                                  WorldView view, TerrainMode mode) {
-        return build(controlPoints, spacing, width, view, mode, OrganicTunables.defaults());
+        return build(controlPoints, spacing, width, view, mode, PathStyle.defaults());
     }
 
     /**
-     * Builds an {@link EditPlan}, threading the M5 organic stages (edge wobble, material gradient,
-     * feather blend) through the geometric pipeline. Pure and deterministic: same
-     * {@code (controlPoints, spacing, width, mode, tunables)} + same WorldView answers ->
+     * Builds an {@link EditPlan}, threading the organic stages (edge wobble, material gradient,
+     * feather blend, M6 edge shoulder) through the geometric pipeline. Pure and deterministic: same
+     * {@code (controlPoints, spacing, width, mode, style)} + same WorldView answers ->
      * byte-identical plan. The organic seed is derived from the control points inside this method
      * (see {@link #operationSeed}), so the client preview and the server rebuild produce the same
      * layout without any seed field crossing the wire.
      */
     public static EditPlan build(List<Vec3d> controlPoints, double spacing, double width,
-                                 WorldView view, TerrainMode mode, OrganicTunables tunables) {
+                                 WorldView view, TerrainMode mode, PathStyle style) {
         List<PathSample> raw = PathSampler.sampleWithWidth(controlPoints, spacing, width);
         // The footprint (which columns the path covers) is derived from the terrain-snapped samples in
         // every mode, so switching modes changes only the Y handling, never the plan's horizontal extent.
@@ -86,31 +88,35 @@ public final class EditPlanBuilder {
         PathMask mask = PathMask.build(grounded);
 
         // Derive a stable operation seed from the control points and split it into per-stage sub-seeds
-        // so the three noise fields don't correlate.
+        // so the noise fields don't correlate.
         long seed = operationSeed(controlPoints);
         long edgeSeed = seed ^ EDGE_SALT;
         long gradSeed = seed ^ GRAD_SALT;
         long blendSeed = seed ^ BLEND_SALT;
+        long bandSeed = seed ^ BAND_SALT;
 
         // Clamp the organic amplitudes to the path's half-width so a narrow path keeps a solid core
         // (see EDGE_EROSION_MAX_FRACTION / FEATHER_MAX_FRACTION). Deterministic in width.
         double halfWidth = width / 2.0;
-        double effErosion = Math.min(tunables.edgeErosionFactor(), halfWidth * EDGE_EROSION_MAX_FRACTION);
-        int effSkirt = Math.min(tunables.blendSkirtWidth(), (int) Math.floor(halfWidth * FEATHER_MAX_FRACTION));
+        double effErosion = Math.min(style.edgeErosionFactor(), halfWidth * EDGE_EROSION_MAX_FRACTION);
+        int effSkirt = Math.min(style.blendSkirtWidth(), (int) Math.floor(halfWidth * FEATHER_MAX_FRACTION));
 
         // Stage 1 (edge wobble): amplitude 0 (neutral) leaves the mask untouched; EdgeShaper shapes the
         // shared mask, so both FOLLOW_SURFACE and CUT_AND_FILL inherit the same wandering boundary.
-        mask = new EdgeShaper(tunables.edgeNoiseScale(), effErosion,
+        mask = new EdgeShaper(style.edgeNoiseScale(), effErosion,
                 EDGE_OCTAVES, EDGE_PERSISTENCE, EDGE_LACUNARITY).shape(mask, edgeSeed);
 
         // Stage 2 (material gradient): per-column clustered block choice. A single-entry palette
         // (neutral) always returns that one block, reproducing the pre-M5 uniform look.
-        GradientEngine gradient = new GradientEngine(gradSeed, tunables.toPalette());
+        GradientEngine gradient = new GradientEngine(gradSeed, style.toCorePalette());
 
         // Stage 3 (feather blend): near-edge inside columns may be dropped back to terrain. Guarded so
         // skirt 0 (neutral, or a path too narrow to feather) keeps EVERY inside column (BlendEngine
         // requires skirt > 0).
         BlendEngine blend = effSkirt > 0 ? new BlendEngine(blendSeed, effSkirt) : null;
+        // Stage 4 (M6 edge shoulder): only when we both feather (effSkirt>0) and have an edge palette.
+        EdgeBandEngine edgeBand = (effSkirt > 0 && style.toEdgePalette().isPresent())
+                ? new EdgeBandEngine(bandSeed, effSkirt, style.toEdgePalette().get()) : null;
 
         Map<GridPos, PlannedChange> changes = new LinkedHashMap<>();
         for (ColumnPos c : sortedColumns(mask.insideColumns())) {
@@ -125,9 +131,17 @@ public final class EditPlanBuilder {
                 BlockStateRef pathBlock = gradient.blockAt(c.x(), pathY, c.z());
                 emitCutAndFill(changes, c, surfaceY, pathY, pathBlock);
             } else {
-                // FOLLOW_SURFACE: feather first — a dropped column is left as original terrain (no change
-                // emitted) so the path edge fades in. Kept columns get a clustered material from the gradient.
+                // FOLLOW_SURFACE: feather first — a dropped column may still get an edge-shoulder block
+                // (dense next to the core, dithering out to terrain at the rim); otherwise it is left as
+                // original terrain. Kept columns get a clustered material from the gradient.
                 if (blend != null && !blend.keepsPathBlock(mask, c.x(), c.z())) {
+                    if (edgeBand != null) {
+                        var edge = edgeBand.edgeBlockAt(mask, c.x(), c.z());
+                        if (edge.isPresent()) {
+                            GridPos pos = new GridPos(c.x(), surfaceY, c.z());
+                            changes.put(pos, new PlannedChange(pos, ChangeKind.TERRAIN, edge.get()));
+                        }
+                    }
                     continue;
                 }
                 BlockStateRef block = gradient.blockAt(c.x(), surfaceY, c.z());

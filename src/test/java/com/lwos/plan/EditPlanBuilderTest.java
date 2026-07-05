@@ -1,6 +1,6 @@
 package com.lwos.plan;
 
-import com.lwos.config.OrganicTunables;
+import com.lwos.config.PathStyle;
 import com.lwos.geometry.Vec3d;
 import com.lwos.geometry.WorldView;
 import org.junit.jupiter.api.Test;
@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class EditPlanBuilderTest {
 
     /** The geometric-pipeline assertions below deliberately disable the organic stages. */
-    private static final OrganicTunables NEUTRAL = OrganicTunables.neutral();
+    private static final PathStyle NEUTRAL = PathStyle.neutral();
 
     private static final class FlatWorldView implements WorldView {
         @Override
@@ -136,9 +136,9 @@ class EditPlanBuilderTest {
         WorldView view = new FlatWorldView();
 
         EditPlan first = EditPlanBuilder.build(controls, 0.25, 8.0, view,
-                TerrainMode.FOLLOW_SURFACE, OrganicTunables.defaults());
+                TerrainMode.FOLLOW_SURFACE, PathStyle.defaults());
         EditPlan second = EditPlanBuilder.build(controls, 0.25, 8.0, view,
-                TerrainMode.FOLLOW_SURFACE, OrganicTunables.defaults());
+                TerrainMode.FOLLOW_SURFACE, PathStyle.defaults());
 
         assertEquals(first.changes(), second.changes(),
                 "same control points + tunables must yield a byte-identical organic plan (preview==apply)");
@@ -157,7 +157,7 @@ class EditPlanBuilderTest {
         int neutral = EditPlanBuilder.build(controls, spacing, 3.0, view,
                 TerrainMode.FOLLOW_SURFACE, NEUTRAL).changes().size();
         int organic = EditPlanBuilder.build(controls, spacing, 3.0, view,
-                TerrainMode.FOLLOW_SURFACE, OrganicTunables.defaults()).changes().size();
+                TerrainMode.FOLLOW_SURFACE, PathStyle.defaults()).changes().size();
 
         assertTrue(organic >= neutral / 2,
                 "a default width-3 path must keep a visible core; kept " + organic + " of " + neutral);
@@ -170,7 +170,7 @@ class EditPlanBuilderTest {
         WorldView view = new FlatWorldView();
 
         EditPlan organic = EditPlanBuilder.build(controls, 0.25, 8.0, view,
-                TerrainMode.FOLLOW_SURFACE, OrganicTunables.defaults());
+                TerrainMode.FOLLOW_SURFACE, PathStyle.defaults());
         EditPlan neutral = EditPlanBuilder.build(controls, 0.25, 8.0, view,
                 TerrainMode.FOLLOW_SURFACE, NEUTRAL);
 

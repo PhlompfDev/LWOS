@@ -118,7 +118,7 @@ public final class PathRenderer {
         // the red carve outlines of CUT_AND_FILL (M4).
         com.lwos.plan.EditPlan plan = com.lwos.plan.EditPlanBuilder.build(
                 positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE, tm.currentPath().terrainMode(),
-                com.lwos.config.OrganicTunables.current());
+                com.lwos.config.StyleManager.active());
         PreviewRenderer.render(plan, ps, buffers);
 
         ps.popPose();
