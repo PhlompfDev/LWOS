@@ -1,12 +1,18 @@
 package com.lwos.plan;
 
+import com.lwos.config.OrganicTunables;
 import com.lwos.geometry.Vec3d;
 import com.lwos.geometry.WorldView;
 import org.junit.jupiter.api.Test;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EditPlanBuilderTest {
+
+    /** The geometric-pipeline assertions below deliberately disable the organic stages. */
+    private static final OrganicTunables NEUTRAL = OrganicTunables.neutral();
 
     private static final class FlatWorldView implements WorldView {
         @Override
@@ -28,7 +34,8 @@ class EditPlanBuilderTest {
     @Test
     void producesNonEmptyTerrainPlanAlongTheLine() {
         List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(10, 70, 0));
-        EditPlan plan = EditPlanBuilder.build(controls, 1.0, 4.0, new FlatWorldView());
+        EditPlan plan = EditPlanBuilder.build(controls, 1.0, 4.0, new FlatWorldView(),
+                TerrainMode.FOLLOW_SURFACE, NEUTRAL);
 
         assertFalse(plan.isEmpty());
         for (PlannedChange change : plan.changes().values()) {
@@ -43,7 +50,8 @@ class EditPlanBuilderTest {
     @Test
     void followSurfaceModeDrapesOverTheMockHeightmap() {
         List<Vec3d> controls = List.of(new Vec3d(0, 0, 0), new Vec3d(12, 0, 0));
-        EditPlan plan = EditPlanBuilder.build(controls, 1.0, 3.0, new SlopedWorldView(), TerrainMode.FOLLOW_SURFACE);
+        EditPlan plan = EditPlanBuilder.build(controls, 1.0, 3.0, new SlopedWorldView(),
+                TerrainMode.FOLLOW_SURFACE, NEUTRAL);
 
         assertFalse(plan.isEmpty());
         for (PlannedChange change : plan.changes().values()) {
@@ -62,7 +70,8 @@ class EditPlanBuilderTest {
     void cutAndFillCarvesTerrainAboveThePathToAir() {
         // Surface at 80, path forced down to 70 -> everything from 71..80 must be removed (set to air).
         List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(10, 70, 0));
-        EditPlan plan = EditPlanBuilder.build(controls, 1.0, 3.0, new LevelWorldView(80), TerrainMode.CUT_AND_FILL);
+        EditPlan plan = EditPlanBuilder.build(controls, 1.0, 3.0, new LevelWorldView(80),
+                TerrainMode.CUT_AND_FILL, NEUTRAL);
 
         boolean sawCarve = false;
         boolean sawFill = false;
@@ -86,7 +95,8 @@ class EditPlanBuilderTest {
     void cutAndFillBuildsAFoundationOverADip() {
         // Surface at 60, path held up at 70 -> dirt fill from 61..69, path block at 70, nothing removed.
         List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(10, 70, 0));
-        EditPlan plan = EditPlanBuilder.build(controls, 1.0, 3.0, new LevelWorldView(60), TerrainMode.CUT_AND_FILL);
+        EditPlan plan = EditPlanBuilder.build(controls, 1.0, 3.0, new LevelWorldView(60),
+                TerrainMode.CUT_AND_FILL, NEUTRAL);
 
         boolean sawFill = false;
         for (PlannedChange change : plan.changes().values()) {
@@ -104,7 +114,8 @@ class EditPlanBuilderTest {
 
     @Test
     void singleControlPointStillProducesAPlan() {
-        EditPlan plan = EditPlanBuilder.build(List.of(new Vec3d(0, 70, 0)), 1.0, 2.0, new FlatWorldView());
+        EditPlan plan = EditPlanBuilder.build(List.of(new Vec3d(0, 70, 0)), 1.0, 2.0, new FlatWorldView(),
+                TerrainMode.FOLLOW_SURFACE, NEUTRAL);
         assertFalse(plan.isEmpty());
     }
 
@@ -113,9 +124,53 @@ class EditPlanBuilderTest {
         List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(4, 70, 2), new Vec3d(9, 70, -3));
         WorldView view = new FlatWorldView();
 
-        EditPlan first = EditPlanBuilder.build(controls, 0.5, 5.0, view);
-        EditPlan second = EditPlanBuilder.build(controls, 0.5, 5.0, view);
+        EditPlan first = EditPlanBuilder.build(controls, 0.5, 5.0, view, TerrainMode.FOLLOW_SURFACE, NEUTRAL);
+        EditPlan second = EditPlanBuilder.build(controls, 0.5, 5.0, view, TerrainMode.FOLLOW_SURFACE, NEUTRAL);
 
         assertEquals(first.changes(), second.changes());
+    }
+
+    @Test
+    void organicDefaultsAreDeterministic() {
+        List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(20, 70, 8), new Vec3d(40, 70, -6));
+        WorldView view = new FlatWorldView();
+
+        EditPlan first = EditPlanBuilder.build(controls, 0.25, 8.0, view,
+                TerrainMode.FOLLOW_SURFACE, OrganicTunables.defaults());
+        EditPlan second = EditPlanBuilder.build(controls, 0.25, 8.0, view,
+                TerrainMode.FOLLOW_SURFACE, OrganicTunables.defaults());
+
+        assertEquals(first.changes(), second.changes(),
+                "same control points + tunables must yield a byte-identical organic plan (preview==apply)");
+    }
+
+    @Test
+    void organicDefaultsClusterMaterialsFeatherAndReshapeVsNeutral() {
+        // A wide, long path gives the noise fields room to express clusters and a feathered rim.
+        List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(30, 70, 0), new Vec3d(60, 70, 0));
+        WorldView view = new FlatWorldView();
+
+        EditPlan organic = EditPlanBuilder.build(controls, 0.25, 8.0, view,
+                TerrainMode.FOLLOW_SURFACE, OrganicTunables.defaults());
+        EditPlan neutral = EditPlanBuilder.build(controls, 0.25, 8.0, view,
+                TerrainMode.FOLLOW_SURFACE, NEUTRAL);
+
+        // (a) Clustered materials: more than one distinct block id appears (not uniform dirt_path).
+        Set<String> organicBlocks = new HashSet<>();
+        for (PlannedChange change : organic.changes().values()) {
+            organicBlocks.add(change.state().id());
+        }
+        assertTrue(organicBlocks.size() > 1,
+                "organic default palette must place more than one distinct block id, got " + organicBlocks);
+
+        // (b) Feathering: fewer inside columns are placed than the neutral (un-feathered) build.
+        assertTrue(organic.changes().size() < neutral.changes().size(),
+                "feathering must drop some near-edge inside columns vs the neutral build");
+
+        // (c) Edge shaping: the placed footprint differs from the neutral (un-shaped) footprint.
+        Set<GridPos> organicCols = organic.changes().keySet();
+        Set<GridPos> neutralCols = neutral.changes().keySet();
+        assertNotEquals(neutralCols, organicCols,
+                "edge shaping + feathering must change which columns are inside the path");
     }
 }

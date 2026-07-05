@@ -117,7 +117,8 @@ public final class PathRenderer {
         // Built with the active TerrainMode so the preview matches what the server will place — including
         // the red carve outlines of CUT_AND_FILL (M4).
         com.lwos.plan.EditPlan plan = com.lwos.plan.EditPlanBuilder.build(
-                positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE, tm.currentPath().terrainMode());
+                positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE, tm.currentPath().terrainMode(),
+                com.lwos.config.OrganicTunables.current());
         PreviewRenderer.render(plan, ps, buffers);
 
         ps.popPose();
