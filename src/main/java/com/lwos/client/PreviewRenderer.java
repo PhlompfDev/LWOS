@@ -52,6 +52,11 @@ public final class PreviewRenderer {
             GridPos pos = change.pos();
             ps.pushPose();
             ps.translate(pos.x(), pos.y(), pos.z());
+            // Offset and scale up slightly so the translucent preview extends just outside the real
+            // block it overlays — otherwise its faces are coplanar with the solid block and z-fight
+            // or are fully obscured.
+            ps.translate(-0.005, -0.005, -0.005);
+            ps.scale(1.01f, 1.01f, 1.01f);
             BakedModel model = blockRenderer.getBlockModel(state);
             blockRenderer.getModelRenderer().renderModel(
                     ps.last(), translucent, state, model,
