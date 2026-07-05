@@ -52,10 +52,10 @@ public final class PreviewRenderer {
             GridPos pos = change.pos();
             ps.pushPose();
             ps.translate(pos.x(), pos.y(), pos.z());
-            // Offset and scale up slightly so the translucent preview extends just outside the real
-            // block it overlays — otherwise its faces are coplanar with the solid block and z-fight
-            // or are fully obscured.
-            ps.translate(-0.005, -0.005, -0.005);
+            // Lift the preview clear of the terrain it overlays: +0.125 on Y so a 15/16-height path
+            // block's top face emerges above a full block, plus a tiny xz offset + upscale so the
+            // side faces don't z-fight with coplanar solid blocks.
+            ps.translate(-0.005, 0.125, -0.005);
             ps.scale(1.01f, 1.01f, 1.01f);
             BakedModel model = blockRenderer.getBlockModel(state);
             blockRenderer.getModelRenderer().renderModel(
