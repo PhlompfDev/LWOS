@@ -18,6 +18,9 @@ import java.util.Map;
  * Pure and deterministic: same inputs + same WorldView answers -> identical EditPlan.
  */
 public final class EditPlanBuilder {
+    /** Default material for TERRAIN changes until the organic engine (M5) chooses per-cell materials. */
+    private static final BlockStateRef DEFAULT_TERRAIN = new BlockStateRef("minecraft:dirt_path");
+
     private EditPlanBuilder() { }
 
     public static EditPlan build(List<Vec3d> controlPoints, double spacing, double width, WorldView view) {
@@ -29,7 +32,7 @@ public final class EditPlanBuilder {
         for (ColumnPos c : mask.insideColumns()) {
             int y = view.surfaceHeight(c.x(), c.z());
             GridPos pos = new GridPos(c.x(), y, c.z());
-            changes.put(pos, new PlannedChange(pos, ChangeKind.TERRAIN));
+            changes.put(pos, new PlannedChange(pos, ChangeKind.TERRAIN, DEFAULT_TERRAIN));
         }
         return new EditPlan(changes);
     }
