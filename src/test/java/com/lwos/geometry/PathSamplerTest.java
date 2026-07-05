@@ -44,4 +44,16 @@ class PathSamplerTest {
         assertEquals(0.0, out.get(0).x(), EPS);
         assertEquals(10.0, out.get(out.size() - 1).x(), EPS);
     }
+
+    @Test
+    void sampleWithWidthCarriesConstantWidth() {
+        List<Vec3d> controls = List.of(new Vec3d(0, 0, 0), new Vec3d(10, 0, 0));
+        List<PathSample> out = PathSampler.sampleWithWidth(controls, 2.0, 4.0);
+        assertFalse(out.isEmpty());
+        for (PathSample s : out) {
+            assertEquals(4.0, s.width(), EPS);
+        }
+        assertEquals(0.0, out.get(0).position().x(), EPS);
+        assertEquals(10.0, out.get(out.size() - 1).position().x(), EPS);
+    }
 }

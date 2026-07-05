@@ -13,6 +13,14 @@ public final class PathSampler {
         return resample(CatmullRomSpline.sample(controlPoints, SAMPLES_PER_SEGMENT), spacing);
     }
 
+    /** Resamples the curve, attaching a constant width to every sample (M2: width is constant, not yet variable). */
+    public static List<PathSample> sampleWithWidth(List<Vec3d> controlPoints, double spacing, double width) {
+        List<Vec3d> centerline = sample(controlPoints, spacing);
+        List<PathSample> out = new ArrayList<>(centerline.size());
+        for (Vec3d p : centerline) out.add(new PathSample(p, width));
+        return out;
+    }
+
     public static List<Vec3d> resample(List<Vec3d> polyline, double spacing) {
         List<Vec3d> out = new ArrayList<>();
         if (polyline == null || polyline.isEmpty()) return out;
