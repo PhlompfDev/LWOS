@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Collections;
 
 /**
  * Union of per-sample discs (radius = width/2) into a column occupancy field with a
@@ -96,5 +97,24 @@ public final class PathMask {
             if (e.getValue() <= 0.0) out.add(e.getKey());
         }
         return out;
+    }
+
+    /**
+     * Full tracked signed-distance field (negative = inside, halo band = 0..EDGE_HALO), as an
+     * unmodifiable view. Lets later organic stages (e.g. EdgeShaper) read every tracked column,
+     * not just the inside/outside boolean.
+     */
+    public Map<ColumnPos, Double> edgeDistances() {
+        return Collections.unmodifiableMap(new HashMap<>(edgeDistance));
+    }
+
+    /**
+     * Builds a PathMask directly from a pre-computed signed distance field (negative = inside).
+     * Defensive-copies the input so later mutation of the caller's map can't leak into this mask.
+     * Used by organic post-processing stages (e.g. EdgeShaper) that reshape an existing mask's
+     * boundary rather than re-deriving it from path samples.
+     */
+    public static PathMask of(Map<ColumnPos, Double> edgeDistances) {
+        return new PathMask(new HashMap<>(edgeDistances));
     }
 }
