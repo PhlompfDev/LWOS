@@ -36,6 +36,12 @@ public final class LwosInputHandler {
         if (!tm.isEnabled()) return;
         while (LwosKeyMappings.DELETE_POINT.consumeClick()) tm.currentPath().deleteLast();
         while (LwosKeyMappings.CANCEL_PATH.consumeClick()) tm.currentPath().clear();
+        while (LwosKeyMappings.WIDTH_UP.consumeClick()) {
+            tm.currentPath().setWidth(tm.currentPath().width() + 1.0);
+        }
+        while (LwosKeyMappings.WIDTH_DOWN.consumeClick()) {
+            tm.currentPath().setWidth(tm.currentPath().width() - 1.0);
+        }
     }
 
     @SubscribeEvent
