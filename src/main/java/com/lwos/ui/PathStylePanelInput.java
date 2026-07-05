@@ -23,6 +23,7 @@ import org.lwjgl.glfw.GLFW;
 public final class PathStylePanelInput {
 
     private static int draggingSlider = -1; // index into the current layout's slider list, or -1
+    private static final int SCROLL_STEP = 14; // gui-scaled px per wheel notch
 
     private PathStylePanelInput() { }
 
@@ -123,6 +124,17 @@ public final class PathStylePanelInput {
                 return;
             }
         }
+    }
+
+    /** Scroll the panel body while the cursor is freed for editing (Ctrl held). */
+    @SubscribeEvent
+    public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
+        if (!PathStylePanelState.isEditing()) return;
+        double delta = event.getScrollDelta();
+        if (delta == 0) return;
+        // Wheel up (delta > 0) reveals content above -> smaller offset.
+        PathStylePanelState.addScroll((int) Math.round(-delta * SCROLL_STEP));
+        event.setCanceled(true);
     }
 
     private static boolean hit(int x, int y, int w, int h, double mx, double my) {

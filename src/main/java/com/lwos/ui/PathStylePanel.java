@@ -59,11 +59,17 @@ public final class PathStylePanel implements IGuiOverlay {
         int bottom = screenHeight - 30;
         g.fill(x, top, x + PANEL_W, bottom, PANEL_BG);
 
+        int scroll = PathStylePanelState.scrollOffset();
+        // Reserve a fixed footer strip that never scrolls.
+        int bodyBottom = bottom - 16;
+        g.enableScissor(x, top, x + PANEL_W, bodyBottom);
+
         List<SlotRect> slots = new ArrayList<>();
         List<SliderRect> sliders = new ArrayList<>();
         List<ChipRect> chips = new ArrayList<>();
         int cx = x + PAD;
-        int y = top + PAD;
+        int contentTop = top + PAD;
+        int y = contentTop - scroll;
 
         // Preset chip bar
         List<String> presets = StyleManager.presetNames();
@@ -107,6 +113,12 @@ public final class PathStylePanel implements IGuiOverlay {
                 "erosion", 0, 0, 4, sliders);
         y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge noise", s.edgeNoiseScale(),
                 "noise", 0, 0.01, 0.3, sliders);
+
+        g.disableScissor();
+        // Content height = last y (scrolled) + scroll back to unscrolled space, minus the visible top.
+        int contentHeight = (y + scroll) - contentTop;
+        int visibleHeight = bodyBottom - contentTop;
+        PathStylePanelState.setMaxScroll(Math.max(0, contentHeight - visibleHeight));
 
         // Footer hint
         g.drawString(font, "Hold Ctrl to edit · Look + P to pick",
