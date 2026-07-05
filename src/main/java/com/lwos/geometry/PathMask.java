@@ -24,6 +24,10 @@ public final class PathMask {
     }
 
     public static PathMask build(List<PathSample> samples) {
+        return build(samples, EDGE_HALO);
+    }
+
+    public static PathMask build(List<PathSample> samples, double halo) {
         Map<ColumnPos, Double> dist = new HashMap<>();
         if (samples.isEmpty()) return new PathMask(dist);
 
@@ -38,7 +42,8 @@ public final class PathMask {
             minZ = Math.min(minZ, z);
             maxZ = Math.max(maxZ, z);
         }
-        int pad = (int) Math.ceil(maxRadius) + 1;
+        // Pad the scan region by the halo too, or columns in the outer halo band are never visited.
+        int pad = (int) Math.ceil(maxRadius + halo) + 1;
         minX -= pad; maxX += pad; minZ -= pad; maxZ += pad;
 
         for (int x = minX; x <= maxX; x++) {
@@ -75,7 +80,7 @@ public final class PathMask {
                     if (distToSeg < best) best = distToSeg;
                 }
 
-                if (best <= EDGE_HALO) dist.put(new ColumnPos(x, z), best);
+                if (best <= halo) dist.put(new ColumnPos(x, z), best);
             }
         }
         return new PathMask(dist);

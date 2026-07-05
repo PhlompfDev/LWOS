@@ -43,4 +43,21 @@ class PathMaskTest {
         assertTrue(inside.contains(new ColumnPos(5, 2)));
         assertFalse(inside.contains(new ColumnPos(5, 10)));
     }
+
+    @Test
+    void haloParameterTracksColumnsFurtherOutsideTheEdge() {
+        // One sample, width 2 -> radius 1. Column (3,0) center (3.5,0.5) is ~2.54 blocks outside the
+        // disc edge: tracked only when the halo reaches it, never "inside" either way.
+        List<PathSample> samples = List.of(new PathSample(new Vec3d(0, 64, 0), 2.0));
+
+        PathMask narrow = PathMask.build(samples, 0.5);
+        PathMask wide = PathMask.build(samples, 3.0);
+
+        assertFalse(narrow.isInside(3, 0));
+        assertFalse(wide.isInside(3, 0));
+        assertEquals(Double.POSITIVE_INFINITY, narrow.edgeDistance(3, 0),
+                "a far column must be untracked under a small halo");
+        assertTrue(Double.isFinite(wide.edgeDistance(3, 0)),
+                "a wide halo must track columns further outside the edge");
+    }
 }
