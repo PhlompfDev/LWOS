@@ -21,6 +21,12 @@ public final class EditPlanBuilder {
     /** Default material for TERRAIN changes until the organic engine (M5) chooses per-cell materials. */
     private static final BlockStateRef DEFAULT_TERRAIN = new BlockStateRef("minecraft:dirt_path");
 
+    /**
+     * Curve sampling step (blocks). Shared by the client preview and the server rebuild so both
+     * derive an identical plan from the same control points + width (Global Constraint: determinism).
+     */
+    public static final double DEFAULT_SPACING = 0.25;
+
     private EditPlanBuilder() { }
 
     public static EditPlan build(List<Vec3d> controlPoints, double spacing, double width, WorldView view) {

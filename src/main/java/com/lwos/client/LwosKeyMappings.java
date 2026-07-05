@@ -28,5 +28,9 @@ public final class LwosKeyMappings {
             "key.lwos.width_down", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_BRACKET, CATEGORY);
 
+    public static final KeyMapping COMMIT = new KeyMapping(
+            "key.lwos.commit", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_ENTER, CATEGORY);
+
     private LwosKeyMappings() { }
 }

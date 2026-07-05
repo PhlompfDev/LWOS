@@ -1,10 +1,15 @@
 package com.lwos.client;
 
 import com.lwos.LwosMod;
+import com.lwos.apply.net.EditRequestPacket;
+import com.lwos.geometry.PathNode;
 import com.lwos.geometry.Vec3d;
 import com.lwos.tool.PathTool;
 import com.lwos.tool.ToolManager;
 import com.mojang.blaze3d.platform.InputConstants;
+
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -47,6 +52,20 @@ public final class LwosInputHandler {
         while (LwosKeyMappings.WIDTH_DOWN.consumeClick()) {
             tm.currentPath().setWidth(tm.currentPath().width() - 1.0);
         }
+        while (LwosKeyMappings.COMMIT.consumeClick()) commitPath(tm);
+    }
+
+    /** Sends the current path to the server to be placed, then clears the local session. */
+    private static void commitPath(ToolManager tm) {
+        if (!tm.isPathToolActive()) return;
+        PathTool path = tm.currentPath();
+        List<PathNode> nodes = path.nodes();
+        if (!nodes.isEmpty()) {
+            List<Vec3d> points = new ArrayList<>(nodes.size());
+            for (PathNode node : nodes) points.add(node.position());
+            LwosMod.CHANNEL.sendToServer(new EditRequestPacket(points, path.width()));
+        }
+        path.clear();
     }
 
     @SubscribeEvent
