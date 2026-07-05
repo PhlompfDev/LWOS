@@ -13,6 +13,7 @@ public final class PathRibbon {
         int n = samples.size();
         List<Vec3d> left = new ArrayList<>(n);
         List<Vec3d> right = new ArrayList<>(n);
+        double nx = 1, nz = 0; // last valid normal; default for the no-direction-info case (single/first sample)
         for (int i = 0; i < n; i++) {
             Vec3d p = samples.get(i).position();
             Vec3d prev = samples.get(Math.max(0, i - 1)).position();
@@ -20,8 +21,7 @@ public final class PathRibbon {
             double dx = next.x() - prev.x();
             double dz = next.z() - prev.z();
             double len = Math.sqrt(dx * dx + dz * dz);
-            double nx, nz;
-            if (len <= 1e-9) { nx = 1; nz = 0; } else { nx = -dz / len; nz = dx / len; }
+            if (len > 1e-9) { nx = -dz / len; nz = dx / len; } // else reuse previous valid normal
             double half = samples.get(i).width() / 2.0;
             left.add(new Vec3d(p.x() + nx * half, p.y(), p.z() + nz * half));
             right.add(new Vec3d(p.x() - nx * half, p.y(), p.z() - nz * half));
