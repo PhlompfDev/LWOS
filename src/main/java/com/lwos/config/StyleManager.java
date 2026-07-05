@@ -84,4 +84,31 @@ public final class StyleManager {
             return List.of();
         }
     }
+
+    /** Deletes a named preset file. Returns true if a file was removed. Never throws on IO failure. */
+    public static synchronized boolean deletePreset(String name) {
+        try {
+            return Files.deleteIfExists(stylesDir().resolve(name + ".json"));
+        } catch (IOException e) {
+            System.err.println("[LWOS] Failed to delete preset '" + name + "': " + e);
+            return false;
+        }
+    }
+
+    /**
+     * Renames a preset file, refusing to overwrite an existing target. Returns true on success.
+     * Never throws on IO failure.
+     */
+    public static synchronized boolean renamePreset(String oldName, String newName) {
+        Path from = stylesDir().resolve(oldName + ".json");
+        Path to = stylesDir().resolve(newName + ".json");
+        if (!Files.exists(from) || Files.exists(to)) return false;
+        try {
+            Files.move(from, to);
+            return true;
+        } catch (IOException e) {
+            System.err.println("[LWOS] Failed to rename preset '" + oldName + "' -> '" + newName + "': " + e);
+            return false;
+        }
+    }
 }

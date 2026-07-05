@@ -2,6 +2,7 @@ package com.lwos.ui;
 
 import com.lwos.LwosMod;
 import com.lwos.tool.ToolManager;
+import com.lwos.ui.components.BlockSlotWidget;
 import com.lwos.ui.components.SliderWidget;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
@@ -55,47 +56,81 @@ public final class PathStylePanelInput {
     @SubscribeEvent
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
         if (!PathStylePanelState.isEditing()) return;
-        if (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return;
         Minecraft mc = Minecraft.getInstance();
         double mx = mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / mc.getWindow().getScreenWidth();
         double my = mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / mc.getWindow().getScreenHeight();
         PathStylePanel.Layout layout = PathStylePanel.currentLayout();
         boolean down = event.getAction() == GLFW.GLFW_PRESS;
+        int button = event.getButton();
 
-        if (down) {
-            // Preset chips
-            for (PathStylePanel.ChipRect c : layout.chips()) {
-                if (mx >= c.x() && mx <= c.x() + c.w() && my >= c.y() && my <= c.y() + c.h()) {
-                    if (c.save()) savePreset();
-                    else com.lwos.config.StyleManager.loadPreset(c.preset())
-                            .ifPresent(com.lwos.config.StyleManager::setActive);
-                    event.setCanceled(true);
-                    return;
-                }
-            }
-            // Slots: select the slot; clicking opens the search modal for that slot
-            for (int i = 0; i < layout.slots().size(); i++) {
-                PathStylePanel.SlotRect sr = layout.slots().get(i);
-                if (mx >= sr.x() && mx <= sr.x() + 30 && my >= sr.y() && my <= sr.y() + 30) {
-                    PathStylePanelState.setActiveSlot(sr.index());
-                    mc.setScreen(new BlockSearchScreen(sr.core(), sr.index()));
-                    event.setCanceled(true);
-                    return;
-                }
-            }
-            // Sliders: begin drag
-            for (int i = 0; i < layout.sliders().size(); i++) {
-                PathStylePanel.SliderRect s = layout.sliders().get(i);
-                if (mx >= s.x() && mx <= s.x() + s.w() && my >= s.y() - 4 && my <= s.y() + 10) {
-                    draggingSlider = i;
-                    applySlider(s, mx);
-                    event.setCanceled(true);
-                    return;
-                }
-            }
-        } else { // release
+        if (!down) { // release
             draggingSlider = -1;
+            return;
         }
+
+        // Right- or middle-click: deletions. Chips take priority over slots (they never overlap, but
+        // check chips first for clarity), and the "+ Save" chip / "add" slot are inert here.
+        if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT || button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
+            for (PathStylePanel.ChipRect c : layout.chips()) {
+                if (!c.save() && hit(c.x(), c.y(), c.w(), c.h(), mx, my)) {
+                    com.lwos.config.StyleManager.deletePreset(c.preset());
+                    event.setCanceled(true);
+                    return;
+                }
+            }
+            for (PathStylePanel.SlotRect sr : layout.slots()) {
+                if (hitSlot(sr, mx, my)) {
+                    if (sr.core()) PathStyleEdits.removeCoreSlot(sr.index());
+                    else PathStyleEdits.removeEdgeSlot(sr.index());
+                    // Keep the highlighted slot index in range after a removal (spec Task 1).
+                    PathStylePanelState.setActiveSlot(-1);
+                    event.setCanceled(true);
+                    return;
+                }
+            }
+            return;
+        }
+
+        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) return;
+
+        // Preset chips
+        for (PathStylePanel.ChipRect c : layout.chips()) {
+            if (hit(c.x(), c.y(), c.w(), c.h(), mx, my)) {
+                if (c.save()) savePreset();
+                else com.lwos.config.StyleManager.loadPreset(c.preset())
+                        .ifPresent(com.lwos.config.StyleManager::setActive);
+                event.setCanceled(true);
+                return;
+            }
+        }
+        // Slots: select the slot; clicking opens the search modal for that slot
+        for (int i = 0; i < layout.slots().size(); i++) {
+            PathStylePanel.SlotRect sr = layout.slots().get(i);
+            if (hitSlot(sr, mx, my)) {
+                PathStylePanelState.setActiveSlot(sr.index());
+                mc.setScreen(new BlockSearchScreen(sr.core(), sr.index()));
+                event.setCanceled(true);
+                return;
+            }
+        }
+        // Sliders: begin drag
+        for (int i = 0; i < layout.sliders().size(); i++) {
+            PathStylePanel.SliderRect s = layout.sliders().get(i);
+            if (mx >= s.x() && mx <= s.x() + s.w() && my >= s.y() - 4 && my <= s.y() + 10) {
+                draggingSlider = i;
+                applySlider(s, mx);
+                event.setCanceled(true);
+                return;
+            }
+        }
+    }
+
+    private static boolean hit(int x, int y, int w, int h, double mx, double my) {
+        return mx >= x && mx <= x + w && my >= y && my <= y + h;
+    }
+
+    private static boolean hitSlot(PathStylePanel.SlotRect sr, double mx, double my) {
+        return hit(sr.x(), sr.y(), BlockSlotWidget.SIZE, BlockSlotWidget.SIZE, mx, my);
     }
 
     @SubscribeEvent
