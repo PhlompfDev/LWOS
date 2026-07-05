@@ -64,7 +64,8 @@ public final class LwosInputHandler {
         if (!nodes.isEmpty()) {
             List<Vec3d> points = new ArrayList<>(nodes.size());
             for (PathNode node : nodes) points.add(node.position());
-            LwosMod.CHANNEL.sendToServer(new EditRequestPacket(points, path.width(), path.terrainMode()));
+            LwosMod.CHANNEL.sendToServer(new EditRequestPacket(
+                    points, path.width(), path.terrainMode(), com.lwos.config.StyleManager.active().toJson()));
         }
         path.clear();
     }
