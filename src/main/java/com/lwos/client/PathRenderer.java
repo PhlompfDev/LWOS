@@ -58,19 +58,42 @@ public final class PathRenderer {
             LevelRenderer.renderLineBox(ps, lines, box, 1.0f, 1.0f, 1.0f, 1.0f);
         }
 
-        // Smooth curve (green line strip through evenly-spaced samples).
+        // Terrain-hugging curve + width ribbon (M2: replaces the M1 raw-interpolated curve).
         List<Vec3d> positions = new ArrayList<>(nodes.size());
         for (PathNode node : nodes) positions.add(node.position());
-        List<Vec3d> curve = com.lwos.geometry.PathSampler.sample(positions, SAMPLE_SPACING);
-        for (int i = 0; i < curve.size() - 1; i++) {
-            addLine(lines, mat, nor, curve.get(i), curve.get(i + 1));
+
+        double width = tm.currentPath().width();
+        List<com.lwos.geometry.PathSample> raw =
+                com.lwos.geometry.PathSampler.sampleWithWidth(positions, SAMPLE_SPACING, width);
+        List<com.lwos.geometry.PathSample> grounded =
+                com.lwos.geometry.TerrainSampler.snapToSurface(raw, ForgeWorldView.INSTANCE, 0.05);
+
+        List<Vec3d> centerline = new ArrayList<>(grounded.size());
+        for (com.lwos.geometry.PathSample s : grounded) centerline.add(s.position());
+        for (int i = 0; i < centerline.size() - 1; i++) {
+            addLine(lines, mat, nor, centerline.get(i), centerline.get(i + 1), 0, 255, 0);
+        }
+
+        com.lwos.geometry.PathRibbon.Edges edges = com.lwos.geometry.PathRibbon.compute(grounded);
+        for (int i = 0; i < edges.left().size() - 1; i++) {
+            addLine(lines, mat, nor, edges.left().get(i), edges.left().get(i + 1), 255, 255, 0);
+            addLine(lines, mat, nor, edges.right().get(i), edges.right().get(i + 1), 255, 255, 0);
+        }
+
+        // EditPlan footprint (blue, matching the spec's TERRAIN preview color) — debug outlines only.
+        com.lwos.plan.EditPlan plan = com.lwos.plan.EditPlanBuilder.build(
+                positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE);
+        for (com.lwos.plan.PlannedChange change : plan.changes().values()) {
+            com.lwos.plan.GridPos p = change.pos();
+            AABB box = new AABB(p.x(), p.y(), p.z(), p.x() + 1, p.y() + 1, p.z() + 1);
+            LevelRenderer.renderLineBox(ps, lines, box, 0.2f, 0.4f, 1.0f, 0.6f);
         }
 
         ps.popPose();
         buffers.endBatch(RenderType.lines());
     }
 
-    private static void addLine(VertexConsumer c, Matrix4f mat, Matrix3f nor, Vec3d a, Vec3d b) {
+    private static void addLine(VertexConsumer c, Matrix4f mat, Matrix3f nor, Vec3d a, Vec3d b, int r, int g, int b2) {
         float nx = (float) (b.x() - a.x());
         float ny = (float) (b.y() - a.y());
         float nz = (float) (b.z() - a.z());
@@ -78,8 +101,8 @@ public final class PathRenderer {
         if (len < 1e-6f) return;
         nx /= len; ny /= len; nz /= len;
         c.vertex(mat, (float) a.x(), (float) a.y(), (float) a.z())
-                .color(0, 255, 0, 255).normal(nor, nx, ny, nz).endVertex();
+                .color(r, g, b2, 255).normal(nor, nx, ny, nz).endVertex();
         c.vertex(mat, (float) b.x(), (float) b.y(), (float) b.z())
-                .color(0, 255, 0, 255).normal(nor, nx, ny, nz).endVertex();
+                .color(r, g, b2, 255).normal(nor, nx, ny, nz).endVertex();
     }
 }
