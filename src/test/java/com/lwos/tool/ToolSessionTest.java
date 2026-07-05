@@ -87,4 +87,30 @@ class ToolSessionTest {
         assertFalse(tm.isPathToolActive());
     }
 
+    @Test
+    void defaultWidthIsThree() {
+        PathTool t = new PathTool();
+        assertEquals(3.0, t.width(), 1e-9);
+    }
+
+    @Test
+    void setWidthClampsToValidRange() {
+        PathTool t = new PathTool();
+        t.setWidth(7.5);
+        assertEquals(7.5, t.width(), 1e-9);
+        t.setWidth(100.0);
+        assertEquals(15.0, t.width(), 1e-9);
+        t.setWidth(-5.0);
+        assertEquals(1.0, t.width(), 1e-9);
+    }
+
+    @Test
+    void clearDoesNotResetWidth() {
+        PathTool t = new PathTool();
+        t.setWidth(9.0);
+        t.addPoint(new Vec3d(0, 0, 0));
+        t.clear();
+        assertEquals(9.0, t.width(), 1e-9);
+    }
+
 }
