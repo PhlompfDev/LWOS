@@ -1,6 +1,7 @@
 package com.lwos;
 
 import com.lwos.apply.net.EditRequestPacket;
+import com.lwos.apply.net.UndoRequestPacket;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.common.Mod;
@@ -35,6 +36,9 @@ public class LwosMod {
         int id = 0;
         CHANNEL.registerMessage(id++, EditRequestPacket.class,
                 EditRequestPacket::encode, EditRequestPacket::decode, EditRequestPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, UndoRequestPacket.class,
+                UndoRequestPacket::encode, UndoRequestPacket::decode, UndoRequestPacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 }

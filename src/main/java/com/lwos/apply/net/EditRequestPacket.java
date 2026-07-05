@@ -77,7 +77,8 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width, Terrain
             EditPlan plan = EditPlanBuilder.build(
                     msg.controlPoints(), EditPlanBuilder.DEFAULT_SPACING, width, new ServerWorldView(level),
                     msg.mode(), style);
-            PlacementEngine.apply(level, plan);
+            java.util.List<com.lwos.apply.UndoHistory.BlockSnapshot> priors = PlacementEngine.apply(level, plan);
+            if (!priors.isEmpty()) com.lwos.apply.LwosServerState.UNDO.push(sender.getUUID(), priors);
         });
         context.setPacketHandled(true);
     }
