@@ -14,7 +14,7 @@ import java.util.Set;
 public final class PathMask {
     // Columns whose disc-union distance is within this halo of the edge are tracked at all
     // (a small buffer just outside 0 so future edge-feathering stages have neighbors to read).
-    private static final double EDGE_HALO = 3.0;
+    private static final double EDGE_HALO = 0.5;
 
     private final Map<ColumnPos, Double> edgeDistance;
 
@@ -54,6 +54,8 @@ public final class PathMask {
                     if (d < best) best = d;
                 }
 
+                // Point-disc union alone leaves gaps between sparsely-spaced samples, so we also
+                // take the distance to the segment joining consecutive samples (covers the path between them).
                 // Distance to line segments between consecutive samples
                 for (int i = 0; i < samples.size() - 1; i++) {
                     PathSample s0 = samples.get(i);
