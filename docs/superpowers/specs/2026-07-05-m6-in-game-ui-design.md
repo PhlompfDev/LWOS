@@ -24,6 +24,8 @@ seeing the translucent preview update in real time — replacing manual JSON edi
 | Open gating | **Anytime in builder mode** (pre-configure a style before drawing). |
 | Aesthetic | **Frosted glass** — translucent blurred dark panel, thin hairline dividers, cool blue accent. |
 | Edge palette | **Edge-material shoulder that fades to terrain** (new generation capability). |
+| Point placement reach | **Extended ray to first solid block** (~96 blocks) — place points on distant terrain, like resizing already works at range. |
+| Undo | **Multi-level** bounded commit history, triggered by a **Ctrl+Z keybind** (no panel button). |
 
 ---
 
@@ -131,15 +133,43 @@ with alpha, hairline dividers, blue accent); no vanilla button textures.
 
 ---
 
-## 7. Keybindings (`LwosKeyMappings`)
+## 7. Extended reach & Undo
 
-- **Add:** `TOGGLE_STYLE_PANEL` (`C`), `PICK_BLOCK` (`P`). The Left-Ctrl edit-hold is read directly
-  via `InputConstants.isKeyDown` (like the existing Alt check), not a bindable mapping.
+### 7.1 Long-range point placement
+Today `LwosInputHandler.onUse` places a point at `Minecraft.getInstance().hitResult`, which vanilla
+caps at ~4.5 blocks — so points can only be dropped near the player, even though width resizing
+already works at range via plane intersection. New behavior: cast the look-ray with
+`level.clip(...)` out to a `MAX_PLACE_DISTANCE` (~96 blocks) and place the point on the first solid
+block hit. Width-handle picking is unchanged. Purely client-side (points are still validated/rebuilt
+server-side on commit), so no packet change.
+
+### 7.2 Undo (multi-level commit history)
+Enter-commits become reversible:
+
+- **Snapshot on apply:** `PlacementEngine.apply` records, for every position it changes, the
+  **prior `BlockState`** (before the edit). That snapshot is pushed onto a bounded **per-player undo
+  stack** (server-side, e.g. last 16 commits; oldest evicted).
+- **Undo request:** an `UndoRequestPacket` (client → server) pops the player's most recent snapshot
+  and restores each recorded position to its saved `BlockState`. Pressing undo again walks further
+  back. Empty stack = no-op.
+- **Trigger:** a `UNDO` keybind bound to **Ctrl+Z** (Forge `KeyModifier.CONTROL`), usable while
+  building whether or not the panel is open. `Z` alone remains *delete last point*; the Ctrl
+  modifier disambiguates. (Left-Ctrl also frees the cursor for panel editing when the panel is open;
+  the discrete Ctrl+Z key event still fires undo cleanly.)
+- Server-authoritative and self-contained per player; no cross-player coordination.
+
+---
+
+## 8. Keybindings (`LwosKeyMappings`)
+
+- **Add:** `TOGGLE_STYLE_PANEL` (`C`), `PICK_BLOCK` (`P`), `UNDO` (`Ctrl+Z`). The Left-Ctrl edit-hold
+  is read directly via `InputConstants.isKeyDown` (like the existing Alt check), not a bindable
+  mapping.
 - **Remove:** `RELOAD_TUNABLES` (`R`) and its handler — superseded by the UI as the source of truth.
 
 ---
 
-## 8. Testing
+## 9. Testing
 
 **Pure / headless JUnit:**
 - `PathStyle` JSON serialize/deserialize round-trip (incl. missing-field defaults).
@@ -149,22 +179,27 @@ with alpha, hairline dividers, blue accent); no vanilla button textures.
 - `EditRequestPacket` encode/decode round-trip including the carried style.
 - **Preview == apply**: building with the same style/points/width/mode yields an equal `EditPlan`.
 - `SliderWidget` value↔pixel math and `BlockSlotWidget` hit-testing.
+- Undo history: snapshot captures prior states; restore returns the exact prior `BlockState`s;
+  stack bound (oldest evicted); empty-stack undo is a no-op.
 
 **Playtest (`runClient`):** panel open/close, Ctrl-hold cursor handoff, pick-from-world, search
-modal, preset load/save, and live preview updates while dragging sliders behind the panel.
+modal, preset load/save, live preview updates while dragging sliders behind the panel, placing
+points across distant terrain, and Ctrl+Z reverting one or more commits.
 
 ---
 
-## 9. Scope / non-goals
+## 10. Scope / non-goals
 
 - **Single active style** (no per-path styles).
 - **Dedicated-server config sync** remains out of scope; the packet-carried style covers
   singleplayer / integrated server / LAN commits.
 - No animation or transition polish beyond the static frosted-glass look.
+- Undo history is in-memory and per-session (not persisted across server restart).
+- Survival-friendly block sourcing is **future work** — see §12.
 
 ---
 
-## 10. Definition of Done
+## 11. Definition of Done
 
 - Open the Path Style panel anytime in builder mode; it docks right in frosted glass with the world
   live behind it.
@@ -174,4 +209,18 @@ modal, preset load/save, and live preview updates while dragging sliders behind 
   styled sliders.
 - Any change updates the 3D translucent preview in the background within ~75 ms.
 - The edge shoulder places coarse-dirt/moss blending that fades into terrain.
+- Points can be placed on distant terrain (beyond vanilla reach), matching resize's range.
+- `Ctrl+Z` undoes recent Enter-commits, restoring the exact prior blocks and block states, and steps
+  back through multiple commits.
 - Styles can be saved as named presets and reloaded; the committed path matches the preview.
+
+---
+
+## 12. Future milestones (out of M6 scope)
+
+- **Survival-friendly config option.** A toggle that makes path-building respect survival economy:
+  before committing, show an **itemized receipt** of every block the plan will place (grouped by
+  type with counts); on commit, the mod **pulls those blocks from the player's inventory** to place
+  them (and refuses / partially places if the player lacks the materials). Complements the existing
+  creative-mode flow. Deferred to its own milestone — it touches inventory handling, the commit
+  packet/flow, and a receipt UI, none of which M6 requires.
