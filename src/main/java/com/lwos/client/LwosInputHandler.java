@@ -52,6 +52,7 @@ public final class LwosInputHandler {
         while (LwosKeyMappings.WIDTH_DOWN.consumeClick()) {
             tm.currentPath().setWidth(tm.currentPath().width() - 1.0);
         }
+        while (LwosKeyMappings.TOGGLE_TERRAIN_MODE.consumeClick()) tm.currentPath().toggleTerrainMode();
         while (LwosKeyMappings.COMMIT.consumeClick()) commitPath(tm);
     }
 
@@ -63,7 +64,7 @@ public final class LwosInputHandler {
         if (!nodes.isEmpty()) {
             List<Vec3d> points = new ArrayList<>(nodes.size());
             for (PathNode node : nodes) points.add(node.position());
-            LwosMod.CHANNEL.sendToServer(new EditRequestPacket(points, path.width()));
+            LwosMod.CHANNEL.sendToServer(new EditRequestPacket(points, path.width(), path.terrainMode()));
         }
         path.clear();
     }

@@ -1,12 +1,14 @@
 package com.lwos.client;
 
 import com.lwos.plan.BlockStateRef;
+import com.lwos.plan.ChangeKind;
 import com.lwos.plan.EditPlan;
 import com.lwos.plan.GridPos;
 import com.lwos.plan.PlannedChange;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -16,6 +18,7 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -29,6 +32,8 @@ import net.minecraftforge.registries.ForgeRegistries;
 public final class PreviewRenderer {
     /** Preview alpha (0-255) applied to every block quad so the terrain shows through. */
     private static final int PREVIEW_ALPHA = 150;
+    /** Inset of the red carve outline from the block edges, so stacked REMOVE boxes stay individually readable. */
+    private static final double CARVE_INSET = 0.02;
 
     private PreviewRenderer() { }
 
@@ -44,8 +49,16 @@ public final class PreviewRenderer {
         BlockRenderDispatcher blockRenderer = mc.getBlockRenderer();
         VertexConsumer base = buffers.getBuffer(RenderType.translucent());
         VertexConsumer translucent = new ForcedAlpha(base, PREVIEW_ALPHA);
+        VertexConsumer lines = buffers.getBuffer(RenderType.lines());
 
         for (PlannedChange change : plan.changes().values()) {
+            // REMOVE cells carry air (nothing to draw as a block); outline them in red so the player
+            // sees exactly which blocks CUT_AND_FILL will carve away (spec §5 preview: REMOVE = red).
+            if (change.kind() == ChangeKind.REMOVE) {
+                renderCarveOutline(change.pos(), ps, lines);
+                continue;
+            }
+
             BlockState state = resolve(change.state());
             if (state.isAir()) continue;
 
@@ -65,6 +78,14 @@ public final class PreviewRenderer {
                     ModelData.EMPTY, RenderType.translucent());
             ps.popPose();
         }
+    }
+
+    /** Draws a red wireframe box at {@code pos} marking a block scheduled for removal. */
+    private static void renderCarveOutline(GridPos pos, PoseStack ps, VertexConsumer lines) {
+        AABB box = new AABB(
+                pos.x() + CARVE_INSET, pos.y() + CARVE_INSET, pos.z() + CARVE_INSET,
+                pos.x() + 1 - CARVE_INSET, pos.y() + 1 - CARVE_INSET, pos.z() + 1 - CARVE_INSET);
+        LevelRenderer.renderLineBox(ps, lines, box, 1.0f, 0.15f, 0.15f, 0.9f);
     }
 
     private static BlockState resolve(BlockStateRef ref) {

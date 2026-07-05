@@ -19,10 +19,12 @@ public final class LwosClientModEvents {
         event.register(LwosKeyMappings.WIDTH_UP);
         event.register(LwosKeyMappings.WIDTH_DOWN);
         event.register(LwosKeyMappings.COMMIT);
+        event.register(LwosKeyMappings.TOGGLE_TERRAIN_MODE);
     }
 
     @SubscribeEvent
     public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
+        event.registerAboveAll("terrain_mode", ModeHudOverlay.INSTANCE);
         event.registerAboveAll("tool_wheel", ToolWheelOverlay.INSTANCE);
     }
 }

@@ -9,7 +9,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraftforge.registries.ForgeRegistries;
+
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Applies a committed {@link EditPlan} to the server world (spec §6 apply stage): maps each
@@ -30,6 +34,19 @@ public final class PlacementEngine {
 
     private static BlockState resolve(BlockStateRef ref) {
         Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(ref.id()));
-        return block == null ? null : block.defaultBlockState();
+        if (block == null) return null; // unknown block id — skip rather than crash
+        BlockState state = block.defaultBlockState();
+        for (Map.Entry<String, String> e : ref.properties().entrySet()) {
+            Property<?> property = block.getStateDefinition().getProperty(e.getKey());
+            if (property == null) continue; // property not defined on this block — ignore, keep default
+            state = withProperty(state, property, e.getValue());
+        }
+        return state;
+    }
+
+    /** Parses {@code value} against {@code property} and applies it; leaves the state unchanged if it can't parse. */
+    private static <T extends Comparable<T>> BlockState withProperty(BlockState state, Property<T> property, String value) {
+        Optional<T> parsed = property.getValue(value);
+        return parsed.map(v -> state.setValue(property, v)).orElse(state);
     }
 }

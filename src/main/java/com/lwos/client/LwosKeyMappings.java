@@ -32,5 +32,9 @@ public final class LwosKeyMappings {
             "key.lwos.commit", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_ENTER, CATEGORY);
 
+    public static final KeyMapping TOGGLE_TERRAIN_MODE = new KeyMapping(
+            "key.lwos.toggle_terrain_mode", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_M, CATEGORY);
+
     private LwosKeyMappings() { }
 }
