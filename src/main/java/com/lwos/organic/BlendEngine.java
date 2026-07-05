@@ -39,16 +39,16 @@ public final class BlendEngine {
     // not broad waves, so nearby columns can resolve differently (see class doc).
     private static final double NOISE_SCALE = 0.35;
 
-    private final int skirtWidth;
+    private final double skirtWidth;
     private final PerlinNoise noise;
 
     /**
      * @param seed       operation seed driving the keep/drop noise field (same seed -> identical output)
      * @param skirtWidth width, in blocks, of the outer band over which keep-probability ramps
      *                   from 1.0 (at {@code edgeDistance <= -skirtWidth}) down to ~0 (at
-     *                   {@code edgeDistance = 0}); must be > 0
+     *                   {@code edgeDistance = 0}); must be > 0. May be fractional.
      */
-    public BlendEngine(long seed, int skirtWidth) {
+    public BlendEngine(long seed, double skirtWidth) {
         if (skirtWidth <= 0) {
             throw new IllegalArgumentException("skirtWidth must be > 0, got " + skirtWidth);
         }

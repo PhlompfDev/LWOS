@@ -167,4 +167,20 @@ class BlendEngineTest {
         assertNotEquals(a.feather(mask), b.feather(mask),
                 "different seeds must produce a different kept set somewhere in the skirt");
     }
+
+    @Test
+    void fractionalSkirtWidthFeathersAndKeepsInterior() {
+        // A skirt below 1.0 would have been floored to 0 (feathering off) under the old int API.
+        // With a double skirt it must engage: deep interior kept, near-edge shows dropout.
+        PathMask mask = buildSolidDisc(RADIUS);
+        BlendEngine engine = new BlendEngine(42L, 0.75);
+        Set<ColumnPos> kept = engine.feather(mask);
+
+        double interior = keepFractionInBand(kept, mask, Double.NEGATIVE_INFINITY, -1.0);
+        assertEquals(1.0, interior, 1e-9, "deep interior must be fully kept with a fractional skirt");
+
+        double nearEdge = keepFractionInBand(kept, mask, -0.75, 0.0);
+        assertFalse(Double.isNaN(nearEdge), "expected tracked columns near the edge");
+        assertTrue(nearEdge < 1.0, "a fractional skirt must still drop some near-edge columns");
+    }
 }
