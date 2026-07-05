@@ -15,6 +15,7 @@ public final class LwosClientModEvents {
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(LwosKeyMappings.TOGGLE_MODE);
         event.register(LwosKeyMappings.DELETE_POINT);
+        event.register(LwosKeyMappings.REDO_POINT);
         event.register(LwosKeyMappings.CANCEL_PATH);
         event.register(LwosKeyMappings.WIDTH_UP);
         event.register(LwosKeyMappings.WIDTH_DOWN);

@@ -61,6 +61,7 @@ public final class LwosInputHandler {
         }
         while (LwosKeyMappings.PICK_BLOCK.consumeClick()) pickBlockFromWorld();
         while (LwosKeyMappings.DELETE_POINT.consumeClick()) tm.currentPath().deleteLast();
+        while (LwosKeyMappings.REDO_POINT.consumeClick()) tm.currentPath().redoPoint();
         while (LwosKeyMappings.CANCEL_PATH.consumeClick()) tm.currentPath().clear();
         while (LwosKeyMappings.WIDTH_UP.consumeClick()) {
             tm.currentPath().setWidth(tm.currentPath().width() + 1.0);

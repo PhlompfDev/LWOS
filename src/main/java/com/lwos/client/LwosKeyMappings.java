@@ -17,6 +17,10 @@ public final class LwosKeyMappings {
             "key.lwos.delete_point", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY);
 
+    public static final KeyMapping REDO_POINT = new KeyMapping(
+            "key.lwos.redo_point", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Y, CATEGORY);
+
     public static final KeyMapping CANCEL_PATH = new KeyMapping(
             "key.lwos.cancel_path", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY);

@@ -19,6 +19,7 @@ public class PathTool {
     private static final double MAX_WIDTH = 15.0;
 
     private final List<PathNode> nodes = new ArrayList<>();
+    private final java.util.Deque<PathNode> redoStack = new java.util.ArrayDeque<>();
     private State state = State.IDLE;
     private double width = 3.0;
     private boolean draggingWidth = false;
@@ -57,18 +58,29 @@ public class PathTool {
 
     public void addPoint(Vec3d position) {
         nodes.add(new PathNode(position));
+        redoStack.clear();
         state = State.PLACING;
         revision++;
     }
 
     public void deleteLast() {
-        if (!nodes.isEmpty()) nodes.remove(nodes.size() - 1);
+        if (!nodes.isEmpty()) redoStack.push(nodes.remove(nodes.size() - 1));
         if (nodes.isEmpty()) state = State.IDLE;
         revision++;
     }
 
+    /** Re-appends the most recently deleted point. Returns false if there is nothing to redo. */
+    public boolean redoPoint() {
+        if (redoStack.isEmpty()) return false;
+        nodes.add(redoStack.pop());
+        state = State.PLACING;
+        revision++;
+        return true;
+    }
+
     public void clear() {
         nodes.clear();
+        redoStack.clear();
         state = State.IDLE;
         draggingWidth = false;
         revision++;
