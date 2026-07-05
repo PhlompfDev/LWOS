@@ -29,5 +29,6 @@ public final class LwosClientModEvents {
     public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
         event.registerAboveAll("terrain_mode", ModeHudOverlay.INSTANCE);
         event.registerAboveAll("tool_wheel", ToolWheelOverlay.INSTANCE);
+        event.registerAboveAll("path_style_panel", com.lwos.ui.PathStylePanel.INSTANCE);
     }
 }
