@@ -22,6 +22,7 @@ class EditPlanBuilderTest {
         for (PlannedChange change : plan.changes().values()) {
             assertEquals(ChangeKind.TERRAIN, change.kind());
             assertEquals(70, change.pos().y());
+            assertEquals("minecraft:dirt_path", change.state().id());
         }
         // A column at the midpoint of the line should be covered.
         assertTrue(plan.changes().containsKey(new GridPos(5, 70, 0)));
