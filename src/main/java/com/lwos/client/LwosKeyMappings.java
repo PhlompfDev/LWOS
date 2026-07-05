@@ -3,6 +3,7 @@ package com.lwos.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraftforge.client.settings.KeyConflictContext;
+import net.minecraftforge.client.settings.KeyModifier;
 import org.lwjgl.glfw.GLFW;
 
 public final class LwosKeyMappings {
@@ -36,10 +37,17 @@ public final class LwosKeyMappings {
             "key.lwos.toggle_terrain_mode", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_M, CATEGORY);
 
-    /** Re-reads config/lwos-organic.json so a builder can tune the organic look live (M5 DoD). */
-    public static final KeyMapping RELOAD_TUNABLES = new KeyMapping(
-            "key.lwos.reload_tunables", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY);
+    public static final KeyMapping TOGGLE_STYLE_PANEL = new KeyMapping(
+            "key.lwos.toggle_style_panel", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_C, CATEGORY);
+
+    public static final KeyMapping PICK_BLOCK = new KeyMapping(
+            "key.lwos.pick_block", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_P, CATEGORY);
+
+    public static final KeyMapping UNDO = new KeyMapping(
+            "key.lwos.undo", KeyConflictContext.IN_GAME, KeyModifier.CONTROL,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY);
 
     private LwosKeyMappings() { }
 }

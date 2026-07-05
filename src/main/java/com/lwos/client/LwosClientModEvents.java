@@ -20,7 +20,9 @@ public final class LwosClientModEvents {
         event.register(LwosKeyMappings.WIDTH_DOWN);
         event.register(LwosKeyMappings.COMMIT);
         event.register(LwosKeyMappings.TOGGLE_TERRAIN_MODE);
-        event.register(LwosKeyMappings.RELOAD_TUNABLES);
+        event.register(LwosKeyMappings.TOGGLE_STYLE_PANEL);
+        event.register(LwosKeyMappings.PICK_BLOCK);
+        event.register(LwosKeyMappings.UNDO);
     }
 
     @SubscribeEvent
