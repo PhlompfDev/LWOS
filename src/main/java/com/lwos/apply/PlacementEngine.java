@@ -1,5 +1,6 @@
 package com.lwos.apply;
 
+import com.lwos.apply.UndoHistory.BlockSnapshot;
 import com.lwos.plan.BlockStateRef;
 import com.lwos.plan.EditPlan;
 import com.lwos.plan.GridPos;
@@ -13,6 +14,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -40,6 +43,21 @@ public final class PlacementEngine {
             if (!canReplaceBedrock && level.getBlockState(pos).is(Blocks.BEDROCK)) continue;
             level.setBlock(pos, state, Block.UPDATE_ALL);
         }
+        return priors;
+    }
+
+    /** Serializes a Forge BlockState back to a pure BlockStateRef (id + string properties) for undo. */
+    private static BlockStateRef toRef(BlockState state) {
+        ResourceLocation id = ForgeRegistries.BLOCKS.getKey(state.getBlock());
+        BlockStateRef ref = new BlockStateRef(id == null ? "minecraft:air" : id.toString());
+        for (Property<?> property : state.getProperties()) {
+            ref = ref.with(property.getName(), namedValue(state, property));
+        }
+        return ref;
+    }
+
+    private static <T extends Comparable<T>> String namedValue(BlockState state, Property<T> property) {
+        return property.getName(state.getValue(property));
     }
 
     private static BlockState resolve(BlockStateRef ref) {

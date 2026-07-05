@@ -32,12 +32,22 @@ public class PathTool {
 
     /** Monotonic edit counter; increments whenever a change would alter the preview geometry or plan. */
     public int revision() { return revision; }
+    private long revision = 0;
+
+    public State state() { return state; }
+
+    /** Monotonic counter bumped on every mutation; the preview cache keys on it. */
+    public long revision() { return revision; }
 
     /** How the committed path reconciles with the terrain (draped surface vs. cut/fill grading). */
     public TerrainMode terrainMode() { return terrainMode; }
 
     /** Cycles to the next {@link TerrainMode}; a persistent preference, unaffected by {@link #clear()}. */
     public void toggleTerrainMode() { terrainMode = terrainMode.next(); revision++; }
+    public void toggleTerrainMode() {
+        terrainMode = terrainMode.next();
+        revision++;
+    }
 
     /** True while a width handle is grabbed; suppresses point placement during the drag. */
     public boolean isDraggingWidth() { return draggingWidth; }
@@ -56,6 +66,8 @@ public class PathTool {
             width = clamped;
             revision++;
         }
+        width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w));
+        revision++;
     }
 
     public void addPoint(Vec3d position) {
@@ -70,6 +82,7 @@ public class PathTool {
             revision++;
         }
         if (nodes.isEmpty()) state = State.IDLE;
+        revision++;
     }
 
     public void clear() {
@@ -77,5 +90,6 @@ public class PathTool {
         nodes.clear();
         state = State.IDLE;
         draggingWidth = false;
+        revision++;
     }
 }
