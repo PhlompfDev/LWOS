@@ -368,6 +368,8 @@ Expected: FAIL / compile error — `ColumnPos` and `PathMask` do not exist.
 
 - [ ] **Step 3: Write minimal implementation**
 
+> **Implementation note (added post-execution):** the point-disc-only union shown below cannot satisfy test #4 (`wideStraightLineCoversAFullBand`), which passes only two sparse samples — column (5,0) sits ~1.5 blocks outside both endpoint discs. The shipped code (commit `46b792f`) therefore also takes the distance to the **line segment** joining consecutive samples (standard clamped point-to-segment distance, `r = (w0+w1)/4`), which covers the path between sparse samples. Treat that as the authoritative behavior; the pseudocode below is the pre-execution draft.
+
 Create `src/main/java/com/lwos/geometry/ColumnPos.java`:
 
 ```java
