@@ -23,14 +23,21 @@ public class PathTool {
     private double width = 3.0;
     private boolean draggingWidth = false;
     private TerrainMode terrainMode = TerrainMode.FOLLOW_SURFACE;
+    // Bumped on every edit that changes the derived geometry/plan (points, width, mode). The client
+    // preview caches its built EditPlan against this so the O(path-length) rebuild only runs when the
+    // path actually changes, not every frame.
+    private int revision = 0;
 
     public State state() { return state; }
+
+    /** Monotonic edit counter; increments whenever a change would alter the preview geometry or plan. */
+    public int revision() { return revision; }
 
     /** How the committed path reconciles with the terrain (draped surface vs. cut/fill grading). */
     public TerrainMode terrainMode() { return terrainMode; }
 
     /** Cycles to the next {@link TerrainMode}; a persistent preference, unaffected by {@link #clear()}. */
-    public void toggleTerrainMode() { terrainMode = terrainMode.next(); }
+    public void toggleTerrainMode() { terrainMode = terrainMode.next(); revision++; }
 
     /** True while a width handle is grabbed; suppresses point placement during the drag. */
     public boolean isDraggingWidth() { return draggingWidth; }
@@ -44,20 +51,29 @@ public class PathTool {
     public double width() { return width; }
 
     public void setWidth(double w) {
-        width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w));
+        double clamped = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w));
+        if (clamped != width) {
+            width = clamped;
+            revision++;
+        }
     }
 
     public void addPoint(Vec3d position) {
         nodes.add(new PathNode(position));
         state = State.PLACING;
+        revision++;
     }
 
     public void deleteLast() {
-        if (!nodes.isEmpty()) nodes.remove(nodes.size() - 1);
+        if (!nodes.isEmpty()) {
+            nodes.remove(nodes.size() - 1);
+            revision++;
+        }
         if (nodes.isEmpty()) state = State.IDLE;
     }
 
     public void clear() {
+        if (!nodes.isEmpty()) revision++;
         nodes.clear();
         state = State.IDLE;
         draggingWidth = false;

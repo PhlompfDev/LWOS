@@ -25,11 +25,20 @@ public final class LwosInputHandler {
     /** Look-ray miss distance (blocks) within which a use-click grabs a width handle. */
     private static final double HANDLE_PICK_RADIUS = 0.5;
 
+    /** Only these accounts drive the mod's tools; every mod keybind is inert for anyone else. */
+    private static final java.util.Set<String> MOD_USERS = java.util.Set.of("Plomph", "Dev");
+
     private LwosInputHandler() { }
 
     private static boolean inWorld() {
         Minecraft mc = Minecraft.getInstance();
         return mc.level != null && mc.screen == null && mc.player != null;
+    }
+
+    /** True only when the local player's account name is one of {@link #MOD_USERS}. */
+    private static boolean isModUser() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.player != null && MOD_USERS.contains(mc.player.getGameProfile().getName());
     }
 
     private static boolean altHeld() {
@@ -40,7 +49,7 @@ public final class LwosInputHandler {
 
     @SubscribeEvent
     public static void onKey(InputEvent.Key event) {
-        if (!inWorld()) return;
+        if (!inWorld() || !isModUser()) return;
         ToolManager tm = ToolManager.get();
         // Live-reload the organic tunables from config/lwos-organic.json. Handled in the CLIENT input
         // layer (not the pure ToolManager) so ToolManager stays MC-free and free of file IO; the next
@@ -75,7 +84,7 @@ public final class LwosInputHandler {
 
     @SubscribeEvent
     public static void onScroll(InputEvent.MouseScrollingEvent event) {
-        if (!inWorld()) return;
+        if (!inWorld() || !isModUser()) return;
         ToolManager tm = ToolManager.get();
         if (!tm.isEnabled() || !altHeld()) return;
         double delta = event.getScrollDelta();
@@ -87,7 +96,7 @@ public final class LwosInputHandler {
 
     @SubscribeEvent
     public static void onUse(InputEvent.InteractionKeyMappingTriggered event) {
-        if (!event.isUseItem() || !inWorld()) return;
+        if (!event.isUseItem() || !inWorld() || !isModUser()) return;
         ToolManager tm = ToolManager.get();
         if (!tm.isPathToolActive()) return;
         PathTool path = tm.currentPath();
@@ -119,6 +128,7 @@ public final class LwosInputHandler {
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
+        if (!isModUser()) return;
         ToolManager tm = ToolManager.get();
         PathTool path = tm.currentPath();
         if (!path.isDraggingWidth()) return;

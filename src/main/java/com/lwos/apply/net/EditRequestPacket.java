@@ -72,7 +72,8 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width, Terrain
             EditPlan plan = EditPlanBuilder.build(
                     msg.controlPoints(), EditPlanBuilder.DEFAULT_SPACING, width, new ServerWorldView(level),
                     msg.mode(), OrganicTunables.current());
-            PlacementEngine.apply(level, plan);
+            // Bedrock is only replaceable in creative — survival commits leave the world floor intact.
+            PlacementEngine.apply(level, plan, sender.isCreative());
         });
         context.setPacketHandled(true);
     }

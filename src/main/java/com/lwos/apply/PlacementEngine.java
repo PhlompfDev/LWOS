@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -23,12 +24,21 @@ import java.util.Optional;
 public final class PlacementEngine {
     private PlacementEngine() { }
 
-    public static void apply(ServerLevel level, EditPlan plan) {
+    /**
+     * @param canReplaceBedrock whether the committing player may overwrite bedrock (true only in
+     *                          creative). When false, any change targeting an existing bedrock block
+     *                          is skipped so survival edits can't punch through the world floor.
+     */
+    public static void apply(ServerLevel level, EditPlan plan, boolean canReplaceBedrock) {
         for (PlannedChange change : plan.changes().values()) {
             BlockState state = resolve(change.state());
             if (state == null) continue; // unknown block id — skip rather than crash
             GridPos p = change.pos();
-            level.setBlock(new BlockPos(p.x(), p.y(), p.z()), state, Block.UPDATE_ALL);
+            BlockPos pos = new BlockPos(p.x(), p.y(), p.z());
+            // Protect bedrock outside creative: leave the existing block untouched (spec: no carving
+            // or overwriting the bedrock floor in survival).
+            if (!canReplaceBedrock && level.getBlockState(pos).is(Blocks.BEDROCK)) continue;
+            level.setBlock(pos, state, Block.UPDATE_ALL);
         }
     }
 
