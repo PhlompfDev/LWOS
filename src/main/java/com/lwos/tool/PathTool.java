@@ -2,6 +2,7 @@ package com.lwos.tool;
 
 import com.lwos.geometry.PathNode;
 import com.lwos.geometry.Vec3d;
+import com.lwos.plan.TerrainMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,8 +22,15 @@ public class PathTool {
     private State state = State.IDLE;
     private double width = 3.0;
     private boolean draggingWidth = false;
+    private TerrainMode terrainMode = TerrainMode.FOLLOW_SURFACE;
 
     public State state() { return state; }
+
+    /** How the committed path reconciles with the terrain (draped surface vs. cut/fill grading). */
+    public TerrainMode terrainMode() { return terrainMode; }
+
+    /** Cycles to the next {@link TerrainMode}; a persistent preference, unaffected by {@link #clear()}. */
+    public void toggleTerrainMode() { terrainMode = terrainMode.next(); }
 
     /** True while a width handle is grabbed; suppresses point placement during the drag. */
     public boolean isDraggingWidth() { return draggingWidth; }

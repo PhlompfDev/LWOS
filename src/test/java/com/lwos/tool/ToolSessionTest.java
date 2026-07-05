@@ -2,6 +2,7 @@ package com.lwos.tool;
 
 import com.lwos.geometry.PathNode;
 import com.lwos.geometry.Vec3d;
+import com.lwos.plan.TerrainMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -111,6 +112,30 @@ class ToolSessionTest {
         t.addPoint(new Vec3d(0, 0, 0));
         t.clear();
         assertEquals(9.0, t.width(), 1e-9);
+    }
+
+    @Test
+    void defaultTerrainModeIsFollowSurface() {
+        PathTool t = new PathTool();
+        assertEquals(TerrainMode.FOLLOW_SURFACE, t.terrainMode());
+    }
+
+    @Test
+    void toggleTerrainModeCyclesAndWraps() {
+        PathTool t = new PathTool();
+        t.toggleTerrainMode();
+        assertEquals(TerrainMode.CUT_AND_FILL, t.terrainMode());
+        t.toggleTerrainMode();
+        assertEquals(TerrainMode.FOLLOW_SURFACE, t.terrainMode()); // wraps back
+    }
+
+    @Test
+    void clearDoesNotResetTerrainMode() {
+        PathTool t = new PathTool();
+        t.toggleTerrainMode();
+        t.addPoint(new Vec3d(0, 0, 0));
+        t.clear();
+        assertEquals(TerrainMode.CUT_AND_FILL, t.terrainMode());
     }
 
 }

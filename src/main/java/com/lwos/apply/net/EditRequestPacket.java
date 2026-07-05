@@ -5,6 +5,7 @@ import com.lwos.apply.ServerWorldView;
 import com.lwos.geometry.Vec3d;
 import com.lwos.plan.EditPlan;
 import com.lwos.plan.EditPlanBuilder;
+import com.lwos.plan.TerrainMode;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,7 +20,7 @@ import java.util.function.Supplier;
  * the path control points and global width — not a block payload. The server deterministically
  * rebuilds the {@code EditPlan} via {@link com.lwos.apply.ServerWorldView} before applying it.
  */
-public record EditRequestPacket(List<Vec3d> controlPoints, double width) {
+public record EditRequestPacket(List<Vec3d> controlPoints, double width, TerrainMode mode) {
     /** Guards the server against a malicious/oversized control-point list. */
     private static final int MAX_CONTROL_POINTS = 4096;
     /** Server-side width clamp (mirrors PathTool's client clamp) so a crafted packet can't over-place. */
@@ -34,6 +35,7 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width) {
             buf.writeDouble(p.z());
         }
         buf.writeDouble(msg.width());
+        buf.writeVarInt(msg.mode().ordinal());
     }
 
     public static EditRequestPacket decode(FriendlyByteBuf buf) {
@@ -46,7 +48,12 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width) {
             points.add(new Vec3d(buf.readDouble(), buf.readDouble(), buf.readDouble()));
         }
         double width = buf.readDouble();
-        return new EditRequestPacket(points, width);
+        int modeOrdinal = buf.readVarInt();
+        TerrainMode[] modes = TerrainMode.values();
+        if (modeOrdinal < 0 || modeOrdinal >= modes.length) {
+            throw new IllegalArgumentException("EditRequestPacket terrain mode out of range: " + modeOrdinal);
+        }
+        return new EditRequestPacket(points, width, modes[modeOrdinal]);
     }
 
     public static void handle(EditRequestPacket msg, Supplier<NetworkEvent.Context> ctx) {
@@ -58,7 +65,7 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width) {
             double width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, msg.width()));
             // Deterministic rebuild from the sender's own world view — never trust client blocks (spec §6).
             EditPlan plan = EditPlanBuilder.build(
-                    msg.controlPoints(), EditPlanBuilder.DEFAULT_SPACING, width, new ServerWorldView(level));
+                    msg.controlPoints(), EditPlanBuilder.DEFAULT_SPACING, width, new ServerWorldView(level), msg.mode());
             PlacementEngine.apply(level, plan);
         });
         context.setPacketHandled(true);

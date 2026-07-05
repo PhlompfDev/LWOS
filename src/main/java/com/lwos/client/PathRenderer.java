@@ -114,8 +114,10 @@ public final class PathRenderer {
         handlesVisible = true;
 
         // EditPlan preview: translucent block mesh of the blocks that will be placed (M3, spec §5).
+        // Built with the active TerrainMode so the preview matches what the server will place — including
+        // the red carve outlines of CUT_AND_FILL (M4).
         com.lwos.plan.EditPlan plan = com.lwos.plan.EditPlanBuilder.build(
-                positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE);
+                positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE, tm.currentPath().terrainMode());
         PreviewRenderer.render(plan, ps, buffers);
 
         ps.popPose();

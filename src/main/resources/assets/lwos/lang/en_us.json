@@ -5,5 +5,6 @@
   "key.lwos.cancel_path": "Cancel Path",
   "key.lwos.width_up": "Increase Path Width",
   "key.lwos.width_down": "Decrease Path Width",
-  "key.lwos.commit": "Commit Path"
+  "key.lwos.commit": "Commit Path",
+  "key.lwos.toggle_terrain_mode": "Toggle Terrain Mode"
 }
