@@ -50,8 +50,28 @@ public final class PlacementEngine {
         return priors;
     }
 
+    /**
+     * Writes each snapshot's state into the world, capturing the block it replaced, and returns the
+     * inverse snapshot list. Undo and redo both call this: undo passes prior-states and gets the
+     * placed-states back (to push onto redo); redo passes those placed-states and gets prior-states
+     * back (to push back onto undo).
+     */
+    public static List<BlockSnapshot> restoreSnapshots(ServerLevel level, List<BlockSnapshot> snapshots) {
+        List<BlockSnapshot> inverse = new ArrayList<>();
+        for (BlockSnapshot s : snapshots) {
+            BlockState target = resolve(s.priorState());
+            if (target == null) continue;
+            GridPos p = s.pos();
+            BlockPos bp = new BlockPos(p.x(), p.y(), p.z());
+            BlockState current = level.getBlockState(bp);
+            inverse.add(new BlockSnapshot(p, toRef(current)));
+            level.setBlock(bp, target, Block.UPDATE_ALL);
+        }
+        return inverse;
+    }
+
     /** Serializes a Forge BlockState back to a pure BlockStateRef (id + string properties) for undo. */
-    private static BlockStateRef toRef(BlockState state) {
+    public static BlockStateRef toRef(BlockState state) {
         ResourceLocation id = ForgeRegistries.BLOCKS.getKey(state.getBlock());
         BlockStateRef ref = new BlockStateRef(id == null ? "minecraft:air" : id.toString());
         for (Property<?> property : state.getProperties()) {
@@ -64,7 +84,7 @@ public final class PlacementEngine {
         return property.getName(state.getValue(property));
     }
 
-    private static BlockState resolve(BlockStateRef ref) {
+    public static BlockState resolve(BlockStateRef ref) {
         Block block = ForgeRegistries.BLOCKS.getValue(new ResourceLocation(ref.id()));
         if (block == null) return null; // unknown block id — skip rather than crash
         BlockState state = block.defaultBlockState();

@@ -1,6 +1,7 @@
 package com.lwos.apply.net;
 
 import com.lwos.apply.LwosServerState;
+import com.lwos.apply.PlacementEngine;
 import com.lwos.apply.UndoHistory.BlockSnapshot;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
@@ -11,23 +12,23 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-/** Client → server "undo my last commit". No payload; the server pops the sender's undo stack. */
-public record UndoRequestPacket() {
+/** Client → server "redo my last undone commit". No payload; the server pops the sender's redo stack. */
+public record RedoRequestPacket() {
 
-    public static void encode(UndoRequestPacket msg, FriendlyByteBuf buf) { }
+    public static void encode(RedoRequestPacket msg, FriendlyByteBuf buf) { }
 
-    public static UndoRequestPacket decode(FriendlyByteBuf buf) { return new UndoRequestPacket(); }
+    public static RedoRequestPacket decode(FriendlyByteBuf buf) { return new RedoRequestPacket(); }
 
-    public static void handle(UndoRequestPacket msg, Supplier<NetworkEvent.Context> ctx) {
+    public static void handle(RedoRequestPacket msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender == null) return;
             ServerLevel level = sender.serverLevel();
-            Optional<List<BlockSnapshot>> commit = LwosServerState.UNDO.pop(sender.getUUID());
+            Optional<List<BlockSnapshot>> commit = LwosServerState.UNDO.popRedo(sender.getUUID());
             if (commit.isEmpty()) return;
-            List<BlockSnapshot> placed = com.lwos.apply.PlacementEngine.restoreSnapshots(level, commit.get());
-            LwosServerState.UNDO.pushRedo(sender.getUUID(), placed);
+            List<BlockSnapshot> priors = PlacementEngine.restoreSnapshots(level, commit.get());
+            LwosServerState.UNDO.restoreUndo(sender.getUUID(), priors);
         });
         context.setPacketHandled(true);
     }

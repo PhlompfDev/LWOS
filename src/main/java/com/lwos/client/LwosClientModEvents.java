@@ -24,6 +24,7 @@ public final class LwosClientModEvents {
         event.register(LwosKeyMappings.TOGGLE_STYLE_PANEL);
         event.register(LwosKeyMappings.PICK_BLOCK);
         event.register(LwosKeyMappings.UNDO);
+        event.register(LwosKeyMappings.REDO);
     }
 
     @SubscribeEvent

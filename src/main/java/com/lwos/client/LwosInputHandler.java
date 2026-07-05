@@ -59,6 +59,9 @@ public final class LwosInputHandler {
         while (LwosKeyMappings.UNDO.consumeClick()) {
             LwosMod.CHANNEL.sendToServer(new com.lwos.apply.net.UndoRequestPacket());
         }
+        while (LwosKeyMappings.REDO.consumeClick()) {
+            LwosMod.CHANNEL.sendToServer(new com.lwos.apply.net.RedoRequestPacket());
+        }
         while (LwosKeyMappings.PICK_BLOCK.consumeClick()) pickBlockFromWorld();
         while (LwosKeyMappings.DELETE_POINT.consumeClick()) tm.currentPath().deleteLast();
         while (LwosKeyMappings.REDO_POINT.consumeClick()) tm.currentPath().redoPoint();

@@ -10,5 +10,6 @@
   "key.lwos.toggle_terrain_mode": "Toggle Terrain Mode",
   "key.lwos.toggle_style_panel": "Toggle Path Style panel",
   "key.lwos.pick_block": "Pick block from world",
-  "key.lwos.undo": "Undo last commit"
+  "key.lwos.undo": "Undo last commit",
+  "key.lwos.redo": "Redo last commit"
 }

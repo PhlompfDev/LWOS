@@ -53,5 +53,9 @@ public final class LwosKeyMappings {
             "key.lwos.undo", KeyConflictContext.IN_GAME, KeyModifier.CONTROL,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY);
 
+    public static final KeyMapping REDO = new KeyMapping(
+            "key.lwos.redo", KeyConflictContext.IN_GAME, KeyModifier.CONTROL,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Y, CATEGORY);
+
     private LwosKeyMappings() { }
 }

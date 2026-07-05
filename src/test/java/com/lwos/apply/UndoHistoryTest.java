@@ -44,4 +44,32 @@ class UndoHistoryTest {
         assertTrue(h.pop(b).isEmpty(), "one player's undo must not touch another's");
         assertEquals(7, h.pop(a).get().get(0).pos().x());
     }
+
+    @Test
+    void redoStackReturnsWhatWasPushed() {
+        UndoHistory h = new UndoHistory();
+        UUID p = UUID.randomUUID();
+        h.pushRedo(p, List.of(snap(5)));
+        assertEquals(5, h.popRedo(p).get().get(0).pos().x(), "redo pops what was pushed");
+        assertTrue(h.popRedo(p).isEmpty(), "empty redo stack pops nothing");
+    }
+
+    @Test
+    void aFreshCommitClearsTheRedoStack() {
+        UndoHistory h = new UndoHistory();
+        UUID p = UUID.randomUUID();
+        h.pushRedo(p, List.of(snap(1)));
+        h.push(p, List.of(snap(2))); // a new commit invalidates the redo timeline
+        assertTrue(h.popRedo(p).isEmpty(), "committing new work clears redo");
+    }
+
+    @Test
+    void restoreUndoDoesNotClearRedo() {
+        UndoHistory h = new UndoHistory();
+        UUID p = UUID.randomUUID();
+        h.pushRedo(p, List.of(snap(1)));
+        h.restoreUndo(p, List.of(snap(2))); // redo path pushes back onto undo, keeps redo intact
+        assertEquals(2, h.pop(p).get().get(0).pos().x(), "restoreUndo lands on the undo stack");
+        assertEquals(1, h.popRedo(p).get().get(0).pos().x(), "redo stack survives restoreUndo");
+    }
 }
