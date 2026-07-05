@@ -36,5 +36,10 @@ public final class LwosKeyMappings {
             "key.lwos.toggle_terrain_mode", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_M, CATEGORY);
 
+    /** Re-reads config/lwos-organic.json so a builder can tune the organic look live (M5 DoD). */
+    public static final KeyMapping RELOAD_TUNABLES = new KeyMapping(
+            "key.lwos.reload_tunables", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY);
+
     private LwosKeyMappings() { }
 }

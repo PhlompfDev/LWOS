@@ -42,6 +42,10 @@ public final class LwosInputHandler {
     public static void onKey(InputEvent.Key event) {
         if (!inWorld()) return;
         ToolManager tm = ToolManager.get();
+        // Live-reload the organic tunables from config/lwos-organic.json. Handled in the CLIENT input
+        // layer (not the pure ToolManager) so ToolManager stays MC-free and free of file IO; the next
+        // PathRenderer frame rebuilds the preview against OrganicTunables.current() automatically.
+        while (LwosKeyMappings.RELOAD_TUNABLES.consumeClick()) com.lwos.config.OrganicTunables.reload();
         while (LwosKeyMappings.TOGGLE_MODE.consumeClick()) tm.toggleEnabled();
         if (!tm.isEnabled()) return;
         while (LwosKeyMappings.DELETE_POINT.consumeClick()) tm.currentPath().deleteLast();
