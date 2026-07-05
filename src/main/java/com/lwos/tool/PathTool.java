@@ -20,8 +20,16 @@ public class PathTool {
     private final List<PathNode> nodes = new ArrayList<>();
     private State state = State.IDLE;
     private double width = 3.0;
+    private boolean draggingWidth = false;
 
     public State state() { return state; }
+
+    /** True while a width handle is grabbed; suppresses point placement during the drag. */
+    public boolean isDraggingWidth() { return draggingWidth; }
+
+    public void beginWidthDrag() { draggingWidth = true; }
+
+    public void endWidthDrag() { draggingWidth = false; }
 
     public List<PathNode> nodes() { return Collections.unmodifiableList(nodes); }
 
@@ -44,5 +52,6 @@ public class PathTool {
     public void clear() {
         nodes.clear();
         state = State.IDLE;
+        draggingWidth = false;
     }
 }

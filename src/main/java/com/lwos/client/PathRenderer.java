@@ -26,16 +26,27 @@ import java.util.List;
 public final class PathRenderer {
     private static final double SAMPLE_SPACING = 0.25; // blocks between curve samples
     private static final double GIZMO = 0.15;          // half-size of a control-point box
+    private static final double HANDLE = 0.30;         // half-size of a width-handle box
     // WorldView.surfaceHeight() returns the topmost SOLID block's index (e.g. 64), so the visible
     // surface (top face) is at index+1. Lift the drawn curve/ribbon just above it so RenderType.lines
     // (depth-tested) isn't occluded by the ground block it would otherwise be buried inside.
     private static final double SURFACE_DRAW_OFFSET = 1.05;
+
+    // Width-handle state, published each frame for LwosInputHandler to hit-test and drag against.
+    // Positions are in world space (the drawn, terrain-lifted ribbon midpoint).
+    public static volatile boolean handlesVisible = false;
+    public static volatile Vec3d handleCenter;  // ribbon centerline at the path midpoint
+    public static volatile Vec3d handleLeft;    // left edge handle box center
+    public static volatile Vec3d handleRight;   // right edge handle box center
+    public static volatile Vec3d handleNormal;  // unit horizontal normal pointing toward the left edge
 
     private PathRenderer() { }
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
+
+        handlesVisible = false; // cleared here; re-published below only when the ribbon is drawn
 
         ToolManager tm = ToolManager.get();
         if (!tm.isPathToolActive()) return;
@@ -84,6 +95,23 @@ public final class PathRenderer {
             addLine(lines, mat, nor, edges.right().get(i), edges.right().get(i + 1), 255, 255, 0);
         }
 
+        // Width handles: draggable magenta gizmos on the left/right ribbon edges at the path midpoint.
+        int mid = grounded.size() / 2;
+        Vec3d center = centerline.get(mid);
+        Vec3d leftH = edges.left().get(mid);
+        Vec3d rightH = edges.right().get(mid);
+        drawHandleBox(ps, lines, leftH);
+        drawHandleBox(ps, lines, rightH);
+
+        double hnx = leftH.x() - center.x();
+        double hnz = leftH.z() - center.z();
+        double hlen = Math.sqrt(hnx * hnx + hnz * hnz);
+        handleCenter = center;
+        handleLeft = leftH;
+        handleRight = rightH;
+        handleNormal = hlen > 1e-9 ? new Vec3d(hnx / hlen, 0, hnz / hlen) : new Vec3d(1, 0, 0);
+        handlesVisible = true;
+
         // EditPlan preview: translucent block mesh of the blocks that will be placed (M3, spec §5).
         com.lwos.plan.EditPlan plan = com.lwos.plan.EditPlanBuilder.build(
                 positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE);
@@ -92,6 +120,12 @@ public final class PathRenderer {
         ps.popPose();
         buffers.endBatch(RenderType.lines());
         buffers.endBatch(RenderType.translucent());
+    }
+
+    private static void drawHandleBox(PoseStack ps, VertexConsumer lines, Vec3d p) {
+        AABB box = new AABB(p.x() - HANDLE, p.y() - HANDLE, p.z() - HANDLE,
+                            p.x() + HANDLE, p.y() + HANDLE, p.z() + HANDLE);
+        LevelRenderer.renderLineBox(ps, lines, box, 1.0f, 0.0f, 1.0f, 1.0f); // magenta
     }
 
     private static void addLine(VertexConsumer c, Matrix4f mat, Matrix3f nor, Vec3d a, Vec3d b, int r, int g, int b2) {
