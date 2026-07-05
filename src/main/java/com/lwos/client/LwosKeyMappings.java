@@ -20,5 +20,13 @@ public final class LwosKeyMappings {
             "key.lwos.cancel_path", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_X, CATEGORY);
 
+    public static final KeyMapping WIDTH_UP = new KeyMapping(
+            "key.lwos.width_up", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_BRACKET, CATEGORY);
+
+    public static final KeyMapping WIDTH_DOWN = new KeyMapping(
+            "key.lwos.width_down", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_BRACKET, CATEGORY);
+
     private LwosKeyMappings() { }
 }
