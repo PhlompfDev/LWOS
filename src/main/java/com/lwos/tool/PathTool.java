@@ -23,14 +23,21 @@ public class PathTool {
     private double width = 3.0;
     private boolean draggingWidth = false;
     private TerrainMode terrainMode = TerrainMode.FOLLOW_SURFACE;
+    private long revision = 0;
 
     public State state() { return state; }
+
+    /** Monotonic counter bumped on every mutation; the preview cache keys on it. */
+    public long revision() { return revision; }
 
     /** How the committed path reconciles with the terrain (draped surface vs. cut/fill grading). */
     public TerrainMode terrainMode() { return terrainMode; }
 
     /** Cycles to the next {@link TerrainMode}; a persistent preference, unaffected by {@link #clear()}. */
-    public void toggleTerrainMode() { terrainMode = terrainMode.next(); }
+    public void toggleTerrainMode() {
+        terrainMode = terrainMode.next();
+        revision++;
+    }
 
     /** True while a width handle is grabbed; suppresses point placement during the drag. */
     public boolean isDraggingWidth() { return draggingWidth; }
@@ -45,21 +52,25 @@ public class PathTool {
 
     public void setWidth(double w) {
         width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w));
+        revision++;
     }
 
     public void addPoint(Vec3d position) {
         nodes.add(new PathNode(position));
         state = State.PLACING;
+        revision++;
     }
 
     public void deleteLast() {
         if (!nodes.isEmpty()) nodes.remove(nodes.size() - 1);
         if (nodes.isEmpty()) state = State.IDLE;
+        revision++;
     }
 
     public void clear() {
         nodes.clear();
         state = State.IDLE;
         draggingWidth = false;
+        revision++;
     }
 }

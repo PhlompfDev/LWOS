@@ -25,6 +25,9 @@ public final class LwosInputHandler {
     /** Look-ray miss distance (blocks) within which a use-click grabs a width handle. */
     private static final double HANDLE_PICK_RADIUS = 0.5;
 
+    /** Max look-ray distance (blocks) for placing a path point on distant terrain. */
+    private static final double MAX_PLACE_DISTANCE = 96.0;
+
     private LwosInputHandler() { }
 
     private static boolean inWorld() {
@@ -42,12 +45,13 @@ public final class LwosInputHandler {
     public static void onKey(InputEvent.Key event) {
         if (!inWorld()) return;
         ToolManager tm = ToolManager.get();
-        // Live-reload the organic tunables from config/lwos-organic.json. Handled in the CLIENT input
-        // layer (not the pure ToolManager) so ToolManager stays MC-free and free of file IO; the next
-        // PathRenderer frame rebuilds the preview against OrganicTunables.current() automatically.
-        while (LwosKeyMappings.RELOAD_TUNABLES.consumeClick()) com.lwos.config.OrganicTunables.reload();
         while (LwosKeyMappings.TOGGLE_MODE.consumeClick()) tm.toggleEnabled();
         if (!tm.isEnabled()) return;
+        while (LwosKeyMappings.TOGGLE_STYLE_PANEL.consumeClick()) com.lwos.ui.PathStylePanelState.toggleOpen();
+        while (LwosKeyMappings.UNDO.consumeClick()) {
+            LwosMod.CHANNEL.sendToServer(new com.lwos.apply.net.UndoRequestPacket());
+        }
+        while (LwosKeyMappings.PICK_BLOCK.consumeClick()) pickBlockFromWorld();
         while (LwosKeyMappings.DELETE_POINT.consumeClick()) tm.currentPath().deleteLast();
         while (LwosKeyMappings.CANCEL_PATH.consumeClick()) tm.currentPath().clear();
         while (LwosKeyMappings.WIDTH_UP.consumeClick()) {
@@ -60,6 +64,21 @@ public final class LwosInputHandler {
         while (LwosKeyMappings.COMMIT.consumeClick()) commitPath(tm);
     }
 
+    /** Assigns the block the player is looking at to the panel's active palette slot. */
+    private static void pickBlockFromWorld() {
+        if (!com.lwos.ui.PathStylePanelState.isOpen()) return;
+        int slot = com.lwos.ui.PathStylePanelState.activeSlot();
+        if (slot < 0) return;
+        HitResult hit = Minecraft.getInstance().hitResult;
+        if (hit == null || hit.getType() != HitResult.Type.BLOCK) return;
+        net.minecraft.core.BlockPos bp = ((net.minecraft.world.phys.BlockHitResult) hit).getBlockPos();
+        net.minecraft.world.level.block.state.BlockState bs = Minecraft.getInstance().level.getBlockState(bp);
+        net.minecraft.resources.ResourceLocation id =
+                net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(bs.getBlock());
+        if (id == null) return;
+        com.lwos.ui.PathStyleEdits.setCoreSlotBlock(slot, id.toString());
+    }
+
     /** Sends the current path to the server to be placed, then clears the local session. */
     private static void commitPath(ToolManager tm) {
         if (!tm.isPathToolActive()) return;
@@ -68,7 +87,8 @@ public final class LwosInputHandler {
         if (!nodes.isEmpty()) {
             List<Vec3d> points = new ArrayList<>(nodes.size());
             for (PathNode node : nodes) points.add(node.position());
-            LwosMod.CHANNEL.sendToServer(new EditRequestPacket(points, path.width(), path.terrainMode()));
+            LwosMod.CHANNEL.sendToServer(new EditRequestPacket(
+                    points, path.width(), path.terrainMode(), com.lwos.config.StyleManager.active().toJson()));
         }
         path.clear();
     }
@@ -106,8 +126,18 @@ public final class LwosInputHandler {
             return;
         }
 
-        HitResult hit = Minecraft.getInstance().hitResult;
-        if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
+        // Extended-reach placement: cast the look ray up to MAX_PLACE_DISTANCE and place on the first
+        // solid block, so points can be dropped on distant terrain (matching how width resizing
+        // already reaches).
+        Minecraft mc = Minecraft.getInstance();
+        Vec3 eye = mc.player.getEyePosition(1.0f);
+        Vec3 look = mc.player.getViewVector(1.0f);
+        Vec3 end = eye.add(look.x * MAX_PLACE_DISTANCE, look.y * MAX_PLACE_DISTANCE, look.z * MAX_PLACE_DISTANCE);
+        net.minecraft.world.level.ClipContext cc = new net.minecraft.world.level.ClipContext(
+                eye, end, net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                net.minecraft.world.level.ClipContext.Fluid.NONE, mc.player);
+        net.minecraft.world.phys.BlockHitResult hit = mc.level.clip(cc);
+        if (hit.getType() == HitResult.Type.BLOCK) {
             Vec3 loc = hit.getLocation();
             path.addPoint(new Vec3d(loc.x, loc.y, loc.z));
             event.setSwingHand(false);

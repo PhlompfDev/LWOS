@@ -41,6 +41,9 @@ public final class PathRenderer {
     public static volatile Vec3d handleRight;   // right edge handle box center
     public static volatile Vec3d handleNormal;  // unit horizontal normal pointing toward the left edge
 
+    /** Debounced preview plan cache: rebuilds only when style/path/width/mode changed (M6). */
+    private static final PreviewPlanCache PREVIEW_CACHE = new PreviewPlanCache();
+
     private PathRenderer() { }
 
     @SubscribeEvent
@@ -115,11 +118,20 @@ public final class PathRenderer {
 
         // EditPlan preview: translucent block mesh of the blocks that will be placed (M3, spec §5).
         // Built with the active TerrainMode so the preview matches what the server will place — including
-        // the red carve outlines of CUT_AND_FILL (M4).
-        com.lwos.plan.EditPlan plan = com.lwos.plan.EditPlanBuilder.build(
-                positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE, tm.currentPath().terrainMode(),
-                com.lwos.config.OrganicTunables.current());
-        PreviewRenderer.render(plan, ps, buffers);
+        // the red carve outlines of CUT_AND_FILL (M4). Served from a debounced cache (M6) so style
+        // slider drags recluster live without a per-frame rebuild.
+        PreviewPlanCache.Key key = new PreviewPlanCache.Key(
+                com.lwos.config.StyleManager.version(), tm.currentPath().revision(),
+                width, tm.currentPath().terrainMode().ordinal());
+        long now = System.currentTimeMillis();
+        if (PREVIEW_CACHE.needsRebuild(key, now)) {
+            com.lwos.plan.EditPlan built = com.lwos.plan.EditPlanBuilder.build(
+                    positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE, tm.currentPath().terrainMode(),
+                    com.lwos.config.StyleManager.active());
+            PREVIEW_CACHE.accept(key, built, now);
+        }
+        com.lwos.plan.EditPlan plan = PREVIEW_CACHE.last();
+        if (plan != null) PreviewRenderer.render(plan, ps, buffers);
 
         ps.popPose();
         buffers.endBatch(RenderType.lines());
