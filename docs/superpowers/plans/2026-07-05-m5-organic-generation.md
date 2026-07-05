@@ -22,7 +22,9 @@
 
 ---
 
-### Task 1: Pure Noise Primitives
+### Task 1: Pure Noise Primitives || COMPLETE
+
+### I chose an object-per-seed API (new PerlinNoise(seed).noise(x,y)) rather than a static noise(x,y,seed) function — cleaner and it builds the permutation table once. The plan's (x, y, seed) intent is preserved (seed in constructor).
 
 Implement self-contained noise functions so the compute layer doesn't depend on unseeded or opaque Minecraft RNG.
 
@@ -55,9 +57,9 @@ Transform the geometrically perfect `PathMask` into an organic, irregular occupa
 - Uses low-frequency Perlin noise to add/subtract from the edge distance.
 - Outputs a modified `PathMask` where the boundary wanders naturally.
 
-- [ ] **Step 1: Implement EdgeShaper logic** to apply noise offsets to the distance field.
-- [ ] **Step 2: Write headless golden-image/matrix tests** printing a 2D ascii grid to prove the edge goes from straight to jagged/wavy.
-- [ ] **Step 3: Commit** with message "feat(organic): implement EdgeShaper for irregular path boundaries".
+- [x] **Step 1: Implement EdgeShaper logic** to apply noise offsets to the distance field. _DONE — `EdgeShaper.shape(PathMask, long seed)` perturbs the signed distance via low-freq Perlin fractal; added `PathMask.edgeDistances()` + `PathMask.of(map)`. Outward bulge bounded by EDGE_HALO (pre-approved)._
+- [x] **Step 2: Write headless golden-image/matrix tests** printing a 2D ascii grid to prove the edge goes from straight to jagged/wavy. _DONE — EdgeShaperTest asserts boundary change, per-row min-x variance, determinism, seed divergence._
+- [x] **Step 3: Commit** with message "feat(organic): implement EdgeShaper for irregular path boundaries". _DONE (08030b9)._
 
 ---
 
@@ -74,10 +76,10 @@ Replace single-block assignments with a clustered, weighted palette system.
 - `Palette` holds tuples of `(BlockStateRef, weight, noiseScale, clusterSize)`.
 - `GradientEngine` assigns a `BlockStateRef` to a given `(x, y, z)` by evaluating the palette's noise fields and weights.
 
-- [ ] **Step 1: Define the Palette class** supporting multiple block entries with individual noise properties.
-- [ ] **Step 2: Implement GradientEngine** to sample Cellular/Perlin noise and pick the block with the highest local score based on weights.
-- [ ] **Step 3: Write headless tests** asserting that a large area produces clustered patches, not uniform static.
-- [ ] **Step 4: Commit** with message "feat(organic): implement GradientEngine and clustered palettes".
+- [x] **Step 1: Define the Palette class** supporting multiple block entries with individual noise properties. _DONE — immutable `Palette(List<Entry>)`, `Entry(BlockStateRef, weight, noiseScale, clusterSize)`._
+- [x] **Step 2: Implement GradientEngine** to sample Cellular/Perlin noise and pick the block with the highest local score based on weights. _DONE — `GradientEngine(seed, palette).blockAt(x,y,z)`; clusterSize=Cellular patch size, noiseScale=Perlin jitter, weight biases area; per-entry sub-seeds._
+- [x] **Step 3: Write headless tests** asserting that a large area produces clustered patches, not uniform static. _DONE — GradientEngineTest: >0.6 same-neighbour clustering, weight-bias majority, determinism, seed divergence, both noise fields load-bearing._
+- [x] **Step 4: Commit** with message "feat(organic): implement GradientEngine and clustered palettes". _DONE (60e20e8)._
 
 ---
 
@@ -93,9 +95,9 @@ Ensure the transition from the drawn path to the original terrain is soft and fe
 - At the outer N-block skirt (where distance to edge approaches 0), smoothly increase the probability of leaving the original terrain block intact.
 - Uses noise to make the feathering irregular.
 
-- [ ] **Step 1: Implement BlendEngine** to drop out blocks randomly (driven by noise) near the edge limits.
-- [ ] **Step 2: Write headless tests** confirming a solid path correctly degrades into the background block state at the extremities.
-- [ ] **Step 3: Commit** with message "feat(organic): implement BlendEngine for feathered transitions".
+- [x] **Step 1: Implement BlendEngine** to drop out blocks randomly (driven by noise) near the edge limits. _DONE — `BlendEngine(seed, skirtWidth)`; smoothstep keep-probability that is 1.0 deep inside (dist<=-N) and falls to 0 at the edge, resolved against a seeded noise coin. `keepsPathBlock(mask,x,z)` / `feather(mask)`._
+- [x] **Step 2: Write headless tests** confirming a solid path correctly degrades into the background block state at the extremities. _DONE — BlendEngineTest: interior all-kept, keep-fraction drops toward rim, irregular (noise crossover) not a clean ring, determinism, seed divergence._
+- [x] **Step 3: Commit** with message "feat(organic): implement BlendEngine for feathered transitions". _DONE (defafb5)._
 
 ---
 
@@ -113,10 +115,10 @@ Wire the `organic/` modules into the `EditPlanBuilder` and expose configuration 
 - `EditPlanBuilder`: Add `EdgeShaper`, `GradientEngine`, and `BlendEngine` to the sequence between geometry generation and the final `EditPlan`.
 - Enable a command or hotkey to reload tunables and trigger a debounce preview re-render.
 
-- [ ] **Step 1: Update EditPlanBuilder** to thread data through the three new organic stages.
-- [ ] **Step 2: Implement OrganicTunables** and hot-reload mechanism.
-- [ ] **Step 3: Manual in-game verification** (Draw a path, verify the edge is irregular and the materials cluster. Edit the JSON tunables, hit reload, and watch the preview update immediately).
-- [ ] **Step 4: Commit** with message "feat(plan): integrate organic generation stages into pipeline".
+- [x] **Step 1: Update EditPlanBuilder** to thread data through the three new organic stages. _DONE — `build(...,OrganicTunables)` overload: PathMask.build → EdgeShaper.shape → per inside column BlendEngine gate → GradientEngine material. Operation seed = explicit splitmix hash of control points (preview==apply, no packet change); distinct per-stage sub-seeds; builder stays pure (tunables passed in). `neutral()` reproduces pre-M5 geometric output._
+- [x] **Step 2: Implement OrganicTunables** and hot-reload mechanism. _DONE — immutable snapshot in `com.lwos.config`, Gson JSON load, `current()`/`reload()`; reload keybind (R) in the client input layer (kept out of pure ToolManager); bad edits rejected at reload (fromJson validates palette), prior snapshot retained._
+- [ ] **Step 3: Manual in-game verification** (Draw a path, verify the edge is irregular and the materials cluster. Edit the JSON tunables, hit reload, and watch the preview update immediately). _DEFERRED TO USER — Forge glue is compile-only (`./gradlew build` green); see handoff below._
+- [x] **Step 4: Commit** with message "feat(plan): integrate organic generation stages into pipeline". _DONE (2204996; final-review fixes in 2cec60c)._
 
 ---
 

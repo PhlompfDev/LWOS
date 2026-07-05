@@ -145,6 +145,25 @@ class EditPlanBuilderTest {
     }
 
     @Test
+    void organicDefaultsKeepNarrowDefaultWidthPathVisible() {
+        // Regression (vanished-preview bug): at the in-game default width 3 the absolute organic
+        // amplitudes (erosion 1.5, feather skirt 2) both meet/exceed the path's half-width (1.5) and
+        // used to erode+feather the whole footprint away (28 columns -> 1), making the preview invisible.
+        // A default-width path must keep a solid, visible core.
+        List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(6, 70, 0));
+        WorldView view = new FlatWorldView();
+        double spacing = EditPlanBuilder.DEFAULT_SPACING;
+
+        int neutral = EditPlanBuilder.build(controls, spacing, 3.0, view,
+                TerrainMode.FOLLOW_SURFACE, NEUTRAL).changes().size();
+        int organic = EditPlanBuilder.build(controls, spacing, 3.0, view,
+                TerrainMode.FOLLOW_SURFACE, OrganicTunables.defaults()).changes().size();
+
+        assertTrue(organic >= neutral / 2,
+                "a default width-3 path must keep a visible core; kept " + organic + " of " + neutral);
+    }
+
+    @Test
     void organicDefaultsClusterMaterialsFeatherAndReshapeVsNeutral() {
         // A wide, long path gives the noise fields room to express clusters and a feathered rim.
         List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(30, 70, 0), new Vec3d(60, 70, 0));

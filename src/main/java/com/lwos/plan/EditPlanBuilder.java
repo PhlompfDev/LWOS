@@ -41,6 +41,15 @@ public final class EditPlanBuilder {
     private static final double EDGE_PERSISTENCE = 0.5;
     private static final double EDGE_LACUNARITY = 2.0;
 
+    // The organic amplitudes (edgeErosionFactor, blendSkirtWidth) are ABSOLUTE block distances tuned
+    // for wide paths. On a narrow path they exceed the path's half-width and erode+feather the whole
+    // footprint away — a default width-3 path (half-width 1.5) collapsed from ~28 columns to 1, making
+    // the preview invisible. Clamp both to a fraction of the half-width so a solid, visible core always
+    // survives at every width (including a user-set width of 1-2). Pure function of width, so the client
+    // preview and server apply clamp identically (preview==apply preserved).
+    private static final double EDGE_EROSION_MAX_FRACTION = 0.5;
+    private static final double FEATHER_MAX_FRACTION = 0.5;
+
     // Distinct salts so the three organic stages sample independent noise fields off one base seed,
     // rather than accidentally sharing a pattern (mixed via XOR into the derived operation seed).
     private static final long EDGE_SALT = 0xD1B54A32D192ED03L;
@@ -83,9 +92,15 @@ public final class EditPlanBuilder {
         long gradSeed = seed ^ GRAD_SALT;
         long blendSeed = seed ^ BLEND_SALT;
 
+        // Clamp the organic amplitudes to the path's half-width so a narrow path keeps a solid core
+        // (see EDGE_EROSION_MAX_FRACTION / FEATHER_MAX_FRACTION). Deterministic in width.
+        double halfWidth = width / 2.0;
+        double effErosion = Math.min(tunables.edgeErosionFactor(), halfWidth * EDGE_EROSION_MAX_FRACTION);
+        int effSkirt = Math.min(tunables.blendSkirtWidth(), (int) Math.floor(halfWidth * FEATHER_MAX_FRACTION));
+
         // Stage 1 (edge wobble): amplitude 0 (neutral) leaves the mask untouched; EdgeShaper shapes the
         // shared mask, so both FOLLOW_SURFACE and CUT_AND_FILL inherit the same wandering boundary.
-        mask = new EdgeShaper(tunables.edgeNoiseScale(), tunables.edgeErosionFactor(),
+        mask = new EdgeShaper(tunables.edgeNoiseScale(), effErosion,
                 EDGE_OCTAVES, EDGE_PERSISTENCE, EDGE_LACUNARITY).shape(mask, edgeSeed);
 
         // Stage 2 (material gradient): per-column clustered block choice. A single-entry palette
@@ -93,9 +108,9 @@ public final class EditPlanBuilder {
         GradientEngine gradient = new GradientEngine(gradSeed, tunables.toPalette());
 
         // Stage 3 (feather blend): near-edge inside columns may be dropped back to terrain. Guarded so
-        // skirt 0 (neutral) keeps EVERY inside column (BlendEngine requires skirt > 0).
-        int skirt = tunables.blendSkirtWidth();
-        BlendEngine blend = skirt > 0 ? new BlendEngine(blendSeed, skirt) : null;
+        // skirt 0 (neutral, or a path too narrow to feather) keeps EVERY inside column (BlendEngine
+        // requires skirt > 0).
+        BlendEngine blend = effSkirt > 0 ? new BlendEngine(blendSeed, effSkirt) : null;
 
         Map<GridPos, PlannedChange> changes = new LinkedHashMap<>();
         for (ColumnPos c : sortedColumns(mask.insideColumns())) {

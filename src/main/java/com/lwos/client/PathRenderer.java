@@ -123,7 +123,6 @@ public final class PathRenderer {
 
         ps.popPose();
         buffers.endBatch(RenderType.lines());
-        buffers.endBatch(RenderType.translucent());
     }
 
     private static void drawHandleBox(PoseStack ps, VertexConsumer lines, Vec3d p) {

@@ -5,8 +5,13 @@ import com.lwos.plan.ChangeKind;
 import com.lwos.plan.EditPlan;
 import com.lwos.plan.GridPos;
 import com.lwos.plan.PlannedChange;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
@@ -38,18 +43,30 @@ public final class PreviewRenderer {
     private PreviewRenderer() { }
 
     /**
-     * Draws every {@link PlannedChange} in {@code plan} as a translucent unit block.
-     * The caller is responsible for pushing/popping the world-space PoseStack and for
-     * flushing the {@link RenderType#translucent()} batch afterwards.
+     * Draws every {@link PlannedChange} in {@code plan} as a translucent unit block. Block quads
+     * are drawn immediately (own Tesselator buffer, own setup/draw/teardown) rather than through
+     * {@code buffers}; only the REMOVE carve outlines go through the caller's shared
+     * {@link RenderType#lines()} batch. The caller is responsible for pushing/popping the
+     * world-space PoseStack and for flushing the lines batch afterwards.
      */
     public static void render(EditPlan plan, PoseStack ps, MultiBufferSource buffers) {
         if (plan.isEmpty()) return;
 
         Minecraft mc = Minecraft.getInstance();
         BlockRenderDispatcher blockRenderer = mc.getBlockRenderer();
-        VertexConsumer base = buffers.getBuffer(RenderType.translucent());
-        VertexConsumer translucent = new ForcedAlpha(base, PREVIEW_ALPHA);
         VertexConsumer lines = buffers.getBuffer(RenderType.lines());
+
+        // Block quads are drawn through a dedicated Tesselator buffer with an immediate draw call,
+        // NOT through the shared MultiBufferSource: by the time this fires (AFTER_PARTICLES), vanilla's
+        // own RenderType.translucent() batch for terrain has already been built and flushed earlier in
+        // the frame, and re-acquiring/ending that same shared buffer this late left our quads
+        // reduced to outlines on screen (root cause of the "wireframe-only preview" bug) despite
+        // correct vertex/UV data reaching the buffer. A private buffer + explicit setup/draw/teardown
+        // sidesteps whatever shared state the late re-use was corrupting.
+        RenderType translucentType = RenderType.translucent();
+        BufferBuilder builder = Tesselator.getInstance().getBuilder();
+        builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
+        ForcedAlpha translucent = new ForcedAlpha(builder, PREVIEW_ALPHA);
 
         for (PlannedChange change : plan.changes().values()) {
             // REMOVE cells carry air (nothing to draw as a block); outline them in red so the player
@@ -78,6 +95,10 @@ public final class PreviewRenderer {
                     ModelData.EMPTY, RenderType.translucent());
             ps.popPose();
         }
+
+        translucentType.setupRenderState();
+        BufferUploader.drawWithShader(builder.end());
+        translucentType.clearRenderState();
     }
 
     /** Draws a red wireframe box at {@code pos} marking a block scheduled for removal. */
@@ -103,6 +124,7 @@ public final class PreviewRenderer {
     private static final class ForcedAlpha implements VertexConsumer {
         private final VertexConsumer delegate;
         private final int alpha;
+        int vertexCount = 0;
 
         ForcedAlpha(VertexConsumer delegate, int alpha) {
             this.delegate = delegate;
@@ -147,6 +169,7 @@ public final class PreviewRenderer {
 
         @Override
         public void endVertex() {
+            vertexCount++;
             delegate.endVertex();
         }
 
