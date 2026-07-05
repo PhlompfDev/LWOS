@@ -129,7 +129,12 @@ public final class OrganicTunables {
         }
         if (palette.isEmpty()) palette = d.palette;
 
-        return new OrganicTunables(erosion, noiseScale, skirt, cluster, palette);
+        OrganicTunables snapshot = new OrganicTunables(erosion, noiseScale, skirt, cluster, palette);
+        // Force eager validation (weight > 0, clusterSize > 0 -- see Palette.Entry's constructor) so a
+        // bad edit is rejected HERE, at reload time, rather than later on the render/apply thread where
+        // toPalette() is otherwise first invoked -- once per frame, by EditPlanBuilder.build.
+        snapshot.toPalette();
+        return snapshot;
     }
 
     private static volatile OrganicTunables current = defaults();

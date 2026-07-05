@@ -106,8 +106,9 @@ public final class EditPlanBuilder {
                 // rather than soft. Edge wobble (stage 1) already gives the cut an organic outline, and the
                 // material gradient still varies the walkable floor. So cut/fill keeps every inside column;
                 // only the path block's material comes from the gradient.
-                BlockStateRef pathBlock = gradient.blockAt(c.x(), surfaceY, c.z());
-                emitCutAndFill(changes, c, surfaceY, targetPathY(c, raw), pathBlock);
+                int pathY = targetPathY(c, raw);
+                BlockStateRef pathBlock = gradient.blockAt(c.x(), pathY, c.z());
+                emitCutAndFill(changes, c, surfaceY, pathY, pathBlock);
             } else {
                 // FOLLOW_SURFACE: feather first — a dropped column is left as original terrain (no change
                 // emitted) so the path edge fades in. Kept columns get a clustered material from the gradient.

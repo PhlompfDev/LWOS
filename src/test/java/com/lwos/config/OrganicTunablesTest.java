@@ -57,6 +57,44 @@ class OrganicTunablesTest {
     }
 
     @Test
+    void fromJsonRejectsNonPositiveWeightEagerly() {
+        // Fix: fromJson must validate eagerly (via toPalette()) so a bad edit is rejected at reload
+        // time, not once-per-frame later on the render/apply thread. reload()'s existing
+        // catch (IOException | RuntimeException) already retains the previous good snapshot once
+        // fromJson throws here, so a bad edit still never crashes the game -- just earlier now.
+        String badJson = """
+                {
+                  "palette": [
+                    {"id": "minecraft:dirt_path", "weight": 0.0, "noiseScale": 0.1, "clusterSize": 5.0}
+                  ]
+                }
+                """;
+        assertThrows(IllegalArgumentException.class, () -> OrganicTunables.fromJson(badJson),
+                "a palette entry with weight <= 0 must be rejected eagerly by fromJson");
+
+        String negativeClusterJson = """
+                {
+                  "palette": [
+                    {"id": "minecraft:dirt_path", "weight": 1.0, "noiseScale": 0.1, "clusterSize": -1.0}
+                  ]
+                }
+                """;
+        assertThrows(IllegalArgumentException.class, () -> OrganicTunables.fromJson(negativeClusterJson),
+                "a palette entry with clusterSize <= 0 must be rejected eagerly by fromJson");
+
+        // A valid config must still parse successfully.
+        String goodJson = """
+                {
+                  "palette": [
+                    {"id": "minecraft:dirt_path", "weight": 1.0, "noiseScale": 0.1, "clusterSize": 5.0}
+                  ]
+                }
+                """;
+        OrganicTunables t = OrganicTunables.fromJson(goodJson);
+        assertEquals(1, t.palette().size());
+    }
+
+    @Test
     void toPaletteMapsEveryEntry() {
         OrganicTunables t = OrganicTunables.defaults();
         Palette p = t.toPalette();
