@@ -1,7 +1,13 @@
 package com.lwos.apply.net;
 
+import com.lwos.apply.PlacementEngine;
+import com.lwos.apply.ServerWorldView;
 import com.lwos.geometry.Vec3d;
+import com.lwos.plan.EditPlan;
+import com.lwos.plan.EditPlanBuilder;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
@@ -16,6 +22,9 @@ import java.util.function.Supplier;
 public record EditRequestPacket(List<Vec3d> controlPoints, double width) {
     /** Guards the server against a malicious/oversized control-point list. */
     private static final int MAX_CONTROL_POINTS = 4096;
+    /** Server-side width clamp (mirrors PathTool's client clamp) so a crafted packet can't over-place. */
+    private static final double MIN_WIDTH = 1.0;
+    private static final double MAX_WIDTH = 15.0;
 
     public static void encode(EditRequestPacket msg, FriendlyByteBuf buf) {
         buf.writeVarInt(msg.controlPoints().size());
@@ -43,7 +52,14 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width) {
     public static void handle(EditRequestPacket msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
         context.enqueueWork(() -> {
-            // Task 5 wires the server-side rebuild + PlacementEngine.apply here.
+            ServerPlayer sender = context.getSender();
+            if (sender == null || msg.controlPoints().isEmpty()) return;
+            ServerLevel level = sender.serverLevel();
+            double width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, msg.width()));
+            // Deterministic rebuild from the sender's own world view — never trust client blocks (spec §6).
+            EditPlan plan = EditPlanBuilder.build(
+                    msg.controlPoints(), EditPlanBuilder.DEFAULT_SPACING, width, new ServerWorldView(level));
+            PlacementEngine.apply(level, plan);
         });
         context.setPacketHandled(true);
     }

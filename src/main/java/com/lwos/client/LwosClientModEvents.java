@@ -18,6 +18,7 @@ public final class LwosClientModEvents {
         event.register(LwosKeyMappings.CANCEL_PATH);
         event.register(LwosKeyMappings.WIDTH_UP);
         event.register(LwosKeyMappings.WIDTH_DOWN);
+        event.register(LwosKeyMappings.COMMIT);
     }
 
     @SubscribeEvent

@@ -24,7 +24,8 @@ import java.util.List;
 
 @Mod.EventBusSubscriber(modid = LwosMod.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class PathRenderer {
-    private static final double SAMPLE_SPACING = 0.25; // blocks between curve samples
+    // Shared with the server rebuild so client preview and server placement produce the same plan.
+    private static final double SAMPLE_SPACING = com.lwos.plan.EditPlanBuilder.DEFAULT_SPACING;
     private static final double GIZMO = 0.15;          // half-size of a control-point box
     private static final double HANDLE = 0.30;         // half-size of a width-handle box
     // WorldView.surfaceHeight() returns the topmost SOLID block's index (e.g. 64), so the visible
