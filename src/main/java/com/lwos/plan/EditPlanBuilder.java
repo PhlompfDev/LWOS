@@ -23,6 +23,10 @@ import java.util.Set;
 public final class EditPlanBuilder {
     /** Default material for TERRAIN changes until the organic engine (M5) chooses per-cell materials. */
     private static final BlockStateRef DEFAULT_TERRAIN = new BlockStateRef("minecraft:dirt_path");
+    /** Placed as a foundation below the path when CUT_AND_FILL bridges a dip. */
+    private static final BlockStateRef FILL = new BlockStateRef("minecraft:dirt");
+    /** Target of a REMOVE change: carving is "set to air" on the apply side. */
+    private static final BlockStateRef AIR = new BlockStateRef("minecraft:air");
 
     /**
      * Curve sampling step (blocks). Shared by the client preview and the server rebuild so both
@@ -48,12 +52,58 @@ public final class EditPlanBuilder {
         Map<GridPos, PlannedChange> changes = new LinkedHashMap<>();
         for (ColumnPos c : sortedColumns(mask.insideColumns())) {
             int surfaceY = view.surfaceHeight(c.x(), c.z());
-            // FOLLOW_SURFACE: drape over the terrain, replacing the topmost solid block of the column so
-            // hills are preserved rather than levelled (Global Constraint: preserve terrain by default).
-            GridPos pos = new GridPos(c.x(), surfaceY, c.z());
-            changes.put(pos, new PlannedChange(pos, ChangeKind.TERRAIN, DEFAULT_TERRAIN));
+            if (mode == TerrainMode.CUT_AND_FILL) {
+                emitCutAndFill(changes, c, surfaceY, targetPathY(c, raw));
+            } else {
+                // FOLLOW_SURFACE: drape over the terrain, replacing the topmost solid block of the column
+                // so hills are preserved rather than levelled (Global Constraint: preserve terrain by default).
+                GridPos pos = new GridPos(c.x(), surfaceY, c.z());
+                changes.put(pos, new PlannedChange(pos, ChangeKind.TERRAIN, DEFAULT_TERRAIN));
+            }
         }
         return new EditPlan(changes);
+    }
+
+    /**
+     * CUT_AND_FILL: the path holds its own interpolated elevation. The walkable path block is placed at
+     * {@code pathY}; terrain standing above it is carved to air (REMOVE), and a dirt foundation is placed
+     * up to it where the ground has dropped away below (PLACE).
+     */
+    private static void emitCutAndFill(Map<GridPos, PlannedChange> changes, ColumnPos c, int surfaceY, int pathY) {
+        GridPos pathPos = new GridPos(c.x(), pathY, c.z());
+        changes.put(pathPos, new PlannedChange(pathPos, ChangeKind.TERRAIN, DEFAULT_TERRAIN));
+
+        if (surfaceY > pathY) {
+            // Cut: remove every solid block sitting above the path, opening a cutting through the hill.
+            for (int y = pathY + 1; y <= surfaceY; y++) {
+                GridPos p = new GridPos(c.x(), y, c.z());
+                changes.put(p, new PlannedChange(p, ChangeKind.REMOVE, AIR));
+            }
+        } else if (surfaceY < pathY) {
+            // Fill: bridge the gap between the existing surface and the path with a dirt foundation.
+            for (int y = surfaceY + 1; y < pathY; y++) {
+                GridPos p = new GridPos(c.x(), y, c.z());
+                changes.put(p, new PlannedChange(p, ChangeKind.PLACE, FILL));
+            }
+        }
+    }
+
+    /** Path elevation over a column: the Y of the nearest (horizontally) raw spline sample, rounded to a block. */
+    private static int targetPathY(ColumnPos c, List<PathSample> raw) {
+        double cx = c.x() + 0.5;
+        double cz = c.z() + 0.5;
+        double bestDistSq = Double.POSITIVE_INFINITY;
+        double bestY = 0.0;
+        for (PathSample s : raw) {
+            double dx = cx - s.position().x();
+            double dz = cz - s.position().z();
+            double distSq = dx * dx + dz * dz;
+            if (distSq < bestDistSq) {
+                bestDistSq = distSq;
+                bestY = s.position().y();
+            }
+        }
+        return (int) Math.round(bestY);
     }
 
     /**

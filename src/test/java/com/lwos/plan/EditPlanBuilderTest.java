@@ -19,6 +19,12 @@ class EditPlanBuilderTest {
         public int surfaceHeight(int x, int z) { return 70 + Math.floorDiv(x, 4); }
     }
 
+    /** A flat surface at a fixed height, for isolating cut vs. fill behavior against a level path. */
+    private record LevelWorldView(int height) implements WorldView {
+        @Override
+        public int surfaceHeight(int x, int z) { return height; }
+    }
+
     @Test
     void producesNonEmptyTerrainPlanAlongTheLine() {
         List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(10, 70, 0));
@@ -50,6 +56,50 @@ class EditPlanBuilderTest {
         }
         // A column partway up the slope lands on its raised surface, not Y=70.
         assertTrue(plan.changes().containsKey(new GridPos(8, 72, 0)));
+    }
+
+    @Test
+    void cutAndFillCarvesTerrainAboveThePathToAir() {
+        // Surface at 80, path forced down to 70 -> everything from 71..80 must be removed (set to air).
+        List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(10, 70, 0));
+        EditPlan plan = EditPlanBuilder.build(controls, 1.0, 3.0, new LevelWorldView(80), TerrainMode.CUT_AND_FILL);
+
+        boolean sawCarve = false;
+        boolean sawFill = false;
+        for (PlannedChange change : plan.changes().values()) {
+            if (change.kind() == ChangeKind.REMOVE) {
+                sawCarve = true;
+                assertEquals("minecraft:air", change.state().id(), "carve targets must be air");
+                assertTrue(change.pos().y() > 70 && change.pos().y() <= 80,
+                        "carved blocks sit above the path and up to the surface");
+            }
+            if (change.kind() == ChangeKind.PLACE) sawFill = true;
+        }
+        assertTrue(sawCarve, "a path cut 10 blocks below the surface must produce REMOVE changes");
+        assertFalse(sawFill, "cutting through a hill must not place fill");
+        // The walkable path floor sits at the interpolated Y.
+        assertTrue(plan.changes().containsKey(new GridPos(5, 70, 0)));
+        assertEquals(ChangeKind.TERRAIN, plan.changes().get(new GridPos(5, 70, 0)).kind());
+    }
+
+    @Test
+    void cutAndFillBuildsAFoundationOverADip() {
+        // Surface at 60, path held up at 70 -> dirt fill from 61..69, path block at 70, nothing removed.
+        List<Vec3d> controls = List.of(new Vec3d(0, 70, 0), new Vec3d(10, 70, 0));
+        EditPlan plan = EditPlanBuilder.build(controls, 1.0, 3.0, new LevelWorldView(60), TerrainMode.CUT_AND_FILL);
+
+        boolean sawFill = false;
+        for (PlannedChange change : plan.changes().values()) {
+            assertNotEquals(ChangeKind.REMOVE, change.kind(), "bridging a dip must not carve anything");
+            if (change.kind() == ChangeKind.PLACE) {
+                sawFill = true;
+                assertEquals("minecraft:dirt", change.state().id(), "fill material is dirt");
+                assertTrue(change.pos().y() > 60 && change.pos().y() < 70,
+                        "fill sits between the old surface and the path");
+            }
+        }
+        assertTrue(sawFill, "a path held 10 blocks above the surface must produce PLACE fill");
+        assertTrue(plan.changes().containsKey(new GridPos(5, 70, 0)));
     }
 
     @Test
