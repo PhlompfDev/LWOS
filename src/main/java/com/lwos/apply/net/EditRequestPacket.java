@@ -76,6 +76,9 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width, Terrain
             catch (RuntimeException e) { style = PathStyle.defaults(); }
             EditPlan plan = EditPlanBuilder.build(
                     msg.controlPoints(), EditPlanBuilder.DEFAULT_SPACING, width, new ServerWorldView(level),
+                    msg.mode(), OrganicTunables.current());
+            // Bedrock is only replaceable in creative — survival commits leave the world floor intact.
+            PlacementEngine.apply(level, plan, sender.isCreative());
                     msg.mode(), style);
             java.util.List<com.lwos.apply.UndoHistory.BlockSnapshot> priors = PlacementEngine.apply(level, plan);
             if (!priors.isEmpty()) com.lwos.apply.LwosServerState.UNDO.push(sender.getUUID(), priors);

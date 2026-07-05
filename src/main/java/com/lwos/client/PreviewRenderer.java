@@ -24,6 +24,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -46,10 +47,17 @@ public final class PreviewRenderer {
      * Draws every {@link PlannedChange} in {@code plan} as a translucent unit block. Block quads
      * are drawn immediately (own Tesselator buffer, own setup/draw/teardown) rather than through
      * {@code buffers}; only the REMOVE carve outlines go through the caller's shared
-     * {@link RenderType#lines()} batch. The caller is responsible for pushing/popping the
-     * world-space PoseStack and for flushing the lines batch afterwards.
+     * {@link RenderType#lines()} batch. The caller flushes the lines batch afterwards.
+     *
+     * <p>{@code ps} must be the raw camera-space PoseStack (camera at the origin), NOT pre-translated
+     * by {@code -cam}: each block is positioned by translating {@code (pos - cam)} computed in
+     * {@code double}. Baking absolute world coordinates into the float model-view matrix (translate
+     * by {@code -cam} then by an absolute {@code pos}) loses precision far from the world origin —
+     * near ±few-million the ULP approaches half a block, collapsing the unit quads into untextured
+     * white slivers (the "preview turns into white silhouettes far from spawn" bug). Subtracting in
+     * double keeps the values the matrix sees small, so the texture holds at any distance.
      */
-    public static void render(EditPlan plan, PoseStack ps, MultiBufferSource buffers) {
+    public static void render(EditPlan plan, PoseStack ps, Vec3 cam, MultiBufferSource buffers) {
         if (plan.isEmpty()) return;
 
         Minecraft mc = Minecraft.getInstance();
@@ -72,7 +80,7 @@ public final class PreviewRenderer {
             // REMOVE cells carry air (nothing to draw as a block); outline them in red so the player
             // sees exactly which blocks CUT_AND_FILL will carve away (spec §5 preview: REMOVE = red).
             if (change.kind() == ChangeKind.REMOVE) {
-                renderCarveOutline(change.pos(), ps, lines);
+                renderCarveOutline(change.pos(), cam, ps, lines);
                 continue;
             }
 
@@ -81,7 +89,9 @@ public final class PreviewRenderer {
 
             GridPos pos = change.pos();
             ps.pushPose();
-            ps.translate(pos.x(), pos.y(), pos.z());
+            // Camera-relative offset computed in double (see render()'s javadoc): pos is an int world
+            // coordinate, cam a double — the subtraction happens before the float cast in translate().
+            ps.translate(pos.x() - cam.x, pos.y() - cam.y, pos.z() - cam.z);
             // Lift the preview clear of the terrain it overlays: +0.125 on Y so a 15/16-height path
             // block's top face emerges above a full block, plus a tiny xz offset + upscale so the
             // side faces don't z-fight with coplanar solid blocks.
@@ -101,11 +111,16 @@ public final class PreviewRenderer {
         translucentType.clearRenderState();
     }
 
-    /** Draws a red wireframe box at {@code pos} marking a block scheduled for removal. */
-    private static void renderCarveOutline(GridPos pos, PoseStack ps, VertexConsumer lines) {
+    /**
+     * Draws a red wireframe box at {@code pos} marking a block scheduled for removal. Built in
+     * camera-relative coordinates ({@code pos - cam}) to match the camera-space {@code ps} — same
+     * precision reasoning as the block quads in {@link #render}.
+     */
+    private static void renderCarveOutline(GridPos pos, Vec3 cam, PoseStack ps, VertexConsumer lines) {
+        double x = pos.x() - cam.x, y = pos.y() - cam.y, z = pos.z() - cam.z;
         AABB box = new AABB(
-                pos.x() + CARVE_INSET, pos.y() + CARVE_INSET, pos.z() + CARVE_INSET,
-                pos.x() + 1 - CARVE_INSET, pos.y() + 1 - CARVE_INSET, pos.z() + 1 - CARVE_INSET);
+                x + CARVE_INSET, y + CARVE_INSET, z + CARVE_INSET,
+                x + 1 - CARVE_INSET, y + 1 - CARVE_INSET, z + 1 - CARVE_INSET);
         LevelRenderer.renderLineBox(ps, lines, box, 1.0f, 0.15f, 0.15f, 0.9f);
     }
 

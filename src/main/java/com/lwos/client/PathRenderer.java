@@ -41,6 +41,19 @@ public final class PathRenderer {
     public static volatile Vec3d handleRight;   // right edge handle box center
     public static volatile Vec3d handleNormal;  // unit horizontal normal pointing toward the left edge
 
+    // ---- Preview cache -------------------------------------------------------------------------
+    // The sample -> terrain-snap -> mask -> organic -> plan pipeline is O(path length) and involves
+    // per-column world queries; running it every frame tanked FPS as control points accumulated
+    // (400 -> 30 past ~12 points). Cache the derived geometry + plan and only rebuild when an input
+    // that affects them actually changes (path edit revision, width, terrain mode, or a live tunables
+    // reload — a new OrganicTunables instance, compared by reference).
+    private static int cacheRevision = Integer.MIN_VALUE;
+    private static double cacheWidth = Double.NaN;
+    private static int cacheModeOrdinal = -1;
+    private static com.lwos.config.OrganicTunables cacheTunables;
+    private static List<Vec3d> cacheCenterline;
+    private static com.lwos.geometry.PathRibbon.Edges cacheEdges;
+    private static com.lwos.plan.EditPlan cachePlan;
     /** Debounced preview plan cache: rebuilds only when style/path/width/mode changed (M6). */
     private static final PreviewPlanCache PREVIEW_CACHE = new PreviewPlanCache();
 
@@ -61,6 +74,44 @@ public final class PathRenderer {
         Minecraft mc = Minecraft.getInstance();
         Vec3 cam = event.getCamera().getPosition();
         PoseStack ps = event.getPoseStack();
+
+        double width = tm.currentPath().width();
+        com.lwos.plan.TerrainMode mode = tm.currentPath().terrainMode();
+        com.lwos.config.OrganicTunables tunables = com.lwos.config.OrganicTunables.current();
+        int revision = tm.currentPath().revision();
+
+        // Rebuild the sampled geometry + edit plan only when an input actually changed (see the cache
+        // fields). This pipeline is O(path length) with per-column world queries; running it every
+        // frame is what dragged FPS down as points piled up.
+        if (revision != cacheRevision || width != cacheWidth || mode.ordinal() != cacheModeOrdinal
+                || tunables != cacheTunables) {
+            List<Vec3d> positions = new ArrayList<>(nodes.size());
+            for (PathNode node : nodes) positions.add(node.position());
+
+            List<com.lwos.geometry.PathSample> raw =
+                    com.lwos.geometry.PathSampler.sampleWithWidth(positions, SAMPLE_SPACING, width);
+            List<com.lwos.geometry.PathSample> grounded =
+                    com.lwos.geometry.TerrainSampler.snapToSurface(raw, ForgeWorldView.INSTANCE, SURFACE_DRAW_OFFSET);
+
+            List<Vec3d> centerline = new ArrayList<>(grounded.size());
+            for (com.lwos.geometry.PathSample s : grounded) centerline.add(s.position());
+
+            cacheCenterline = centerline;
+            cacheEdges = com.lwos.geometry.PathRibbon.compute(grounded);
+            // EditPlan preview: translucent block mesh of the blocks that will be placed (M3, spec §5).
+            // Built with the active TerrainMode so the preview matches what the server will place —
+            // including the red carve outlines of CUT_AND_FILL (M4).
+            cachePlan = com.lwos.plan.EditPlanBuilder.build(
+                    positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE, mode, tunables);
+            cacheRevision = revision;
+            cacheWidth = width;
+            cacheModeOrdinal = mode.ordinal();
+            cacheTunables = tunables;
+        }
+        List<Vec3d> centerline = cacheCenterline;
+        com.lwos.geometry.PathRibbon.Edges edges = cacheEdges;
+        com.lwos.plan.EditPlan plan = cachePlan;
+
         ps.pushPose();
         ps.translate(-cam.x, -cam.y, -cam.z);
 
@@ -78,29 +129,16 @@ public final class PathRenderer {
         }
 
         // Terrain-hugging curve + width ribbon (M2: replaces the M1 raw-interpolated curve).
-        List<Vec3d> positions = new ArrayList<>(nodes.size());
-        for (PathNode node : nodes) positions.add(node.position());
-
-        double width = tm.currentPath().width();
-        List<com.lwos.geometry.PathSample> raw =
-                com.lwos.geometry.PathSampler.sampleWithWidth(positions, SAMPLE_SPACING, width);
-        List<com.lwos.geometry.PathSample> grounded =
-                com.lwos.geometry.TerrainSampler.snapToSurface(raw, ForgeWorldView.INSTANCE, SURFACE_DRAW_OFFSET);
-
-        List<Vec3d> centerline = new ArrayList<>(grounded.size());
-        for (com.lwos.geometry.PathSample s : grounded) centerline.add(s.position());
         for (int i = 0; i < centerline.size() - 1; i++) {
             addLine(lines, mat, nor, centerline.get(i), centerline.get(i + 1), 0, 255, 0);
         }
-
-        com.lwos.geometry.PathRibbon.Edges edges = com.lwos.geometry.PathRibbon.compute(grounded);
         for (int i = 0; i < edges.left().size() - 1; i++) {
             addLine(lines, mat, nor, edges.left().get(i), edges.left().get(i + 1), 255, 255, 0);
             addLine(lines, mat, nor, edges.right().get(i), edges.right().get(i + 1), 255, 255, 0);
         }
 
         // Width handles: draggable magenta gizmos on the left/right ribbon edges at the path midpoint.
-        int mid = grounded.size() / 2;
+        int mid = centerline.size() / 2;
         Vec3d center = centerline.get(mid);
         Vec3d leftH = edges.left().get(mid);
         Vec3d rightH = edges.right().get(mid);
@@ -134,6 +172,12 @@ public final class PathRenderer {
         if (plan != null) PreviewRenderer.render(plan, ps, buffers);
 
         ps.popPose();
+
+        // Block preview renders camera-relative (raw pose stack + cam), so it keeps float precision far
+        // from the world origin — see PreviewRenderer#render. The carve outlines it emits go into the
+        // same lines batch, flushed below.
+        PreviewRenderer.render(plan, ps, cam, buffers);
+
         buffers.endBatch(RenderType.lines());
     }
 

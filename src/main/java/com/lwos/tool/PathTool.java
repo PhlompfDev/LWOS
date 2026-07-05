@@ -23,6 +23,15 @@ public class PathTool {
     private double width = 3.0;
     private boolean draggingWidth = false;
     private TerrainMode terrainMode = TerrainMode.FOLLOW_SURFACE;
+    // Bumped on every edit that changes the derived geometry/plan (points, width, mode). The client
+    // preview caches its built EditPlan against this so the O(path-length) rebuild only runs when the
+    // path actually changes, not every frame.
+    private int revision = 0;
+
+    public State state() { return state; }
+
+    /** Monotonic edit counter; increments whenever a change would alter the preview geometry or plan. */
+    public int revision() { return revision; }
     private long revision = 0;
 
     public State state() { return state; }
@@ -34,6 +43,7 @@ public class PathTool {
     public TerrainMode terrainMode() { return terrainMode; }
 
     /** Cycles to the next {@link TerrainMode}; a persistent preference, unaffected by {@link #clear()}. */
+    public void toggleTerrainMode() { terrainMode = terrainMode.next(); revision++; }
     public void toggleTerrainMode() {
         terrainMode = terrainMode.next();
         revision++;
@@ -51,6 +61,11 @@ public class PathTool {
     public double width() { return width; }
 
     public void setWidth(double w) {
+        double clamped = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w));
+        if (clamped != width) {
+            width = clamped;
+            revision++;
+        }
         width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w));
         revision++;
     }
@@ -62,12 +77,16 @@ public class PathTool {
     }
 
     public void deleteLast() {
-        if (!nodes.isEmpty()) nodes.remove(nodes.size() - 1);
+        if (!nodes.isEmpty()) {
+            nodes.remove(nodes.size() - 1);
+            revision++;
+        }
         if (nodes.isEmpty()) state = State.IDLE;
         revision++;
     }
 
     public void clear() {
+        if (!nodes.isEmpty()) revision++;
         nodes.clear();
         state = State.IDLE;
         draggingWidth = false;
