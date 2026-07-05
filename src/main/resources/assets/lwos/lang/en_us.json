@@ -7,5 +7,7 @@
   "key.lwos.width_down": "Decrease Path Width",
   "key.lwos.commit": "Commit Path",
   "key.lwos.toggle_terrain_mode": "Toggle Terrain Mode",
-  "key.lwos.reload_tunables": "Reload Organic Tunables"
+  "key.lwos.toggle_style_panel": "Toggle Path Style panel",
+  "key.lwos.pick_block": "Pick block from world",
+  "key.lwos.undo": "Undo last commit"
 }
