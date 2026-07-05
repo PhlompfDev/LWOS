@@ -59,7 +59,7 @@ mod_authors=monster
 mod_description=Interactive building tools for beautiful, hand-built-looking builds.
 ```
 
-- [ ] **Step 3: Add JUnit 5 to `build.gradle`**
+- [x] **Step 3: Add JUnit 5 to `build.gradle`**
 
 In `build.gradle`, add to the `dependencies { }` block:
 

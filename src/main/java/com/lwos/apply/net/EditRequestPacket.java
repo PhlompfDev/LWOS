@@ -2,6 +2,7 @@ package com.lwos.apply.net;
 
 import com.lwos.apply.PlacementEngine;
 import com.lwos.apply.ServerWorldView;
+import com.lwos.config.OrganicTunables;
 import com.lwos.geometry.Vec3d;
 import com.lwos.plan.EditPlan;
 import com.lwos.plan.EditPlanBuilder;
@@ -64,8 +65,13 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width, Terrain
             ServerLevel level = sender.serverLevel();
             double width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, msg.width()));
             // Deterministic rebuild from the sender's own world view — never trust client blocks (spec §6).
+            // Same tunables snapshot the client preview reads (OrganicTunables.current()); in
+            // singleplayer / an integrated server both sides share this JVM-local holder, so the
+            // rebuilt plan matches the preview. (Multiplayer tunables sync is out of scope — see
+            // OrganicTunables' class doc.)
             EditPlan plan = EditPlanBuilder.build(
-                    msg.controlPoints(), EditPlanBuilder.DEFAULT_SPACING, width, new ServerWorldView(level), msg.mode());
+                    msg.controlPoints(), EditPlanBuilder.DEFAULT_SPACING, width, new ServerWorldView(level),
+                    msg.mode(), OrganicTunables.current());
             PlacementEngine.apply(level, plan);
         });
         context.setPacketHandled(true);
