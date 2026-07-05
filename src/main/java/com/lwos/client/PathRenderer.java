@@ -84,17 +84,14 @@ public final class PathRenderer {
             addLine(lines, mat, nor, edges.right().get(i), edges.right().get(i + 1), 255, 255, 0);
         }
 
-        // EditPlan footprint (blue, matching the spec's TERRAIN preview color) — debug outlines only.
+        // EditPlan preview: translucent block mesh of the blocks that will be placed (M3, spec §5).
         com.lwos.plan.EditPlan plan = com.lwos.plan.EditPlanBuilder.build(
                 positions, SAMPLE_SPACING, width, ForgeWorldView.INSTANCE);
-        for (com.lwos.plan.PlannedChange change : plan.changes().values()) {
-            com.lwos.plan.GridPos p = change.pos();
-            AABB box = new AABB(p.x(), p.y(), p.z(), p.x() + 1, p.y() + 1, p.z() + 1);
-            LevelRenderer.renderLineBox(ps, lines, box, 0.2f, 0.4f, 1.0f, 0.6f);
-        }
+        PreviewRenderer.render(plan, ps, buffers);
 
         ps.popPose();
         buffers.endBatch(RenderType.lines());
+        buffers.endBatch(RenderType.translucent());
     }
 
     private static void addLine(VertexConsumer c, Matrix4f mat, Matrix3f nor, Vec3d a, Vec3d b, int r, int g, int b2) {
