@@ -163,13 +163,16 @@ public final class PathStylePanelInput {
     private static void applySlider(PathStylePanel.SliderRect s, double mx) {
         double value = SliderWidget.valueFromPixel((int) Math.round(mx), s.x(), s.w(), s.min(), s.max());
         switch (s.target()) {
-            case "coreWeight" -> PathStyleEdits.setCoreWeight(s.index(), value);
-            case "edgeWeight" -> PathStyleEdits.setEdgeWeight(s.index(), value);
-            case "feather"    -> PathStyleEdits.setFeatherDepth(value);
-            case "cluster"    -> PathStyleEdits.setClusterSize(value);
-            case "roughness"  -> PathStyleEdits.setEdgeRoughness(value);
-            case "feature"    -> PathStyleEdits.setEdgeFeatureSize(value);
-            case "core"       -> PathStyleEdits.setCoreProtect(value);
+            case "coreWeight"  -> PathStyleEdits.setCoreWeight(s.index(), value);
+            case "edgeWeight"  -> PathStyleEdits.setEdgeWeight(s.index(), value);
+            case "blend"       -> PathStyleEdits.setBlendDepth(value);
+            case "coverage"    -> PathStyleEdits.setEdgeCoverage(value);
+            case "edgecluster" -> PathStyleEdits.setEdgeClusterSize(value);
+            case "reach"       -> PathStyleEdits.setEdgeReach(value);
+            case "cluster"     -> PathStyleEdits.setClusterSize(value);
+            case "erosion"     -> PathStyleEdits.setEdgeErosion(value);
+            case "feature"     -> PathStyleEdits.setEdgeFeatureSize(value);
+            case "core"        -> PathStyleEdits.setCoreProtect(value);
             default -> { }
         }
     }

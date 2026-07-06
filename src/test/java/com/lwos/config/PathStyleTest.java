@@ -10,8 +10,10 @@ class PathStyleTest {
     @Test
     void neutralIsATrueIdentity() {
         PathStyle s = PathStyle.neutral();
-        assertEquals(0.0, s.edgeRoughness(), "neutral does not erode the edge");
-        assertEquals(0.0, s.featherDepth(), "neutral does not feather");
+        assertEquals(0.0, s.edgeErosion(), "neutral does not erode the edge");
+        assertEquals(0.0, s.blendDepth(), "neutral does not feather");
+        assertEquals(0.0, s.edgeCoverage(), "neutral scatters no edge blocks");
+        assertEquals(0.0, s.edgeReach(), "neutral does not reach onto terrain");
         assertEquals(1.0, s.coreProtect(), "neutral protects the whole footprint");
         assertEquals(1, s.core().size());
         assertEquals("minecraft:dirt_path", s.core().get(0).id());
@@ -24,8 +26,10 @@ class PathStyleTest {
         PathStyle s = PathStyle.defaults();
         assertTrue(s.core().size() > 1, "defaults offer clustered core materials");
         assertFalse(s.edge().isEmpty(), "defaults include an edge shoulder");
-        assertTrue(s.featherDepth() > 0, "defaults feather the edge");
-        assertTrue(s.edgeRoughness() > 0, "defaults wobble the edge");
+        assertTrue(s.blendDepth() > 0, "defaults feather the edge");
+        assertTrue(s.edgeErosion() > 0, "defaults erode the edge");
+        assertTrue(s.edgeCoverage() > 0, "defaults scatter edge blocks");
+        assertTrue(s.edgeReach() > 0, "defaults meld onto surrounding terrain");
         assertTrue(s.coreProtect() > 0 && s.coreProtect() < 1, "defaults keep a protected spine but allow a band");
         assertTrue(s.toEdgePalette().isPresent());
     }

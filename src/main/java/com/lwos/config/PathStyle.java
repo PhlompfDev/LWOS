@@ -17,11 +17,13 @@ import java.util.Optional;
  * same shared data. All mutable global state / file IO lives in {@link StyleManager}, keeping
  * {@link com.lwos.plan.EditPlanBuilder} pure.
  *
- * <p><b>Width-relative knobs:</b> {@code edgeRoughness}, {@code featherDepth} and {@code coreProtect}
- * are normalized fractions (0..1), resolved against the path's half-width in
- * {@link com.lwos.plan.EditPlanBuilder}. This keeps a solid, protected spine at every width — a
- * narrow path can't erode/feather its whole footprint away — and lets one style read well from a
- * width-1 trail to a wide road. {@code edgeFeatureSize} is an absolute size in blocks.
+ * <p><b>Absolute edge knobs:</b> {@code edgeErosion}, {@code blendDepth} and {@code edgeReach} are
+ * absolute distances in blocks, not fractions of the path width — a narrow trail and a wide road
+ * both erode/feather/scatter by the same physical depth. {@code coreProtect} is still a fraction of
+ * the half-width (0..1): the guaranteed solid spine that erosion and feathering never touch, so a
+ * path can't be eaten away to nothing regardless of its erosion/blend settings. {@code edgeCoverage}
+ * and {@code edgeClusterSize} drive the edge-scatter density and patch size (also absolute, in
+ * blocks). {@code edgeFeatureSize} remains an absolute erosion feature size in blocks.
  */
 public final class PathStyle {
 
@@ -32,26 +34,32 @@ public final class PathStyle {
 
     private final List<Entry> core;
     private final List<Entry> edge;
-    private final double edgeRoughness;
-    private final double edgeFeatureSize;
-    private final double featherDepth;
-    private final double coreProtect;
+    private final double edgeErosion;      // ragged-edge depth, in blocks (>= 0), uncapped by width
+    private final double edgeFeatureSize;  // erosion feature size, in blocks (>= 1e-3)
+    private final double coreProtect;      // protected inner spine, fraction of half-width (0..1)
+    private final double blendDepth;       // inward feather skirt, in blocks (>= 0)
+    private final double edgeCoverage;     // edge-scatter density (0..1)
+    private final double edgeClusterSize;  // edge-scatter patch size, in blocks (>= 1e-3)
+    private final double edgeReach;        // outward scatter onto terrain, in blocks (>= 0)
     private final double defaultClusterSize;
 
-    public PathStyle(List<Entry> core, List<Entry> edge, double edgeRoughness, double edgeFeatureSize,
-                     double featherDepth, double coreProtect, double defaultClusterSize) {
+    public PathStyle(List<Entry> core, List<Entry> edge, double edgeErosion, double edgeFeatureSize,
+                     double coreProtect, double blendDepth, double edgeCoverage, double edgeClusterSize,
+                     double edgeReach, double defaultClusterSize) {
         if (core == null || core.isEmpty()) {
             throw new IllegalArgumentException("core palette must have at least one entry");
         }
         this.core = List.copyOf(core);
         this.edge = edge == null ? List.of() : List.copyOf(edge);
-        this.edgeRoughness = clamp01(edgeRoughness);
+        this.edgeErosion = Math.max(0.0, edgeErosion);
         this.edgeFeatureSize = Math.max(1e-3, edgeFeatureSize);
-        this.featherDepth = clamp01(featherDepth);
         this.coreProtect = clamp01(coreProtect);
+        this.blendDepth = Math.max(0.0, blendDepth);
+        this.edgeCoverage = clamp01(edgeCoverage);
+        this.edgeClusterSize = Math.max(1e-3, edgeClusterSize);
+        this.edgeReach = Math.max(0.0, edgeReach);
         this.defaultClusterSize = defaultClusterSize;
-        // Eager validation: build the palettes now so a bad entry (weight<=0, clusterSize<=0) is
-        // rejected at construction, not later on the render/apply thread.
+        // Eager validation: reject a bad palette entry now, not later on the render/apply thread.
         toCorePalette();
         toEdgePalette();
     }
@@ -61,17 +69,26 @@ public final class PathStyle {
     public List<Entry> core() { return core; }
     public List<Entry> edge() { return edge; }
 
-    /** Ragged-edge amplitude, 0..1, as a fraction of the movable edge band. 0 = clean, 1 = max ragged. */
-    public double edgeRoughness() { return edgeRoughness; }
+    /** Ragged-edge depth, in blocks. Bounded only by the core-protection clamp, not by path width. */
+    public double edgeErosion() { return edgeErosion; }
 
-    /** Raggedness feature size, in blocks (larger = broader bays, smaller = fine crenellation). */
+    /** Erosion feature size, in blocks (larger = broad bays, smaller = fine rugged teeth). */
     public double edgeFeatureSize() { return edgeFeatureSize; }
 
-    /** Feather skirt depth, 0..1, as a fraction of the movable edge band. 0 = hard edge. */
-    public double featherDepth() { return featherDepth; }
-
-    /** Inner fraction of the half-width (0..1) never eroded or feathered — the guaranteed solid spine. */
+    /** Protected inner spine as a fraction of the half-width (0..1); never eroded or feathered. */
     public double coreProtect() { return coreProtect; }
+
+    /** Inward feather skirt depth, in blocks. 0 = hard edge. */
+    public double blendDepth() { return blendDepth; }
+
+    /** Edge-scatter density (0..1): how many edge blocks appear. 0 = none, 1 = solid shoulder. */
+    public double edgeCoverage() { return edgeCoverage; }
+
+    /** Edge-scatter patch size, in blocks: big = broad clumps, small = fine speckle. */
+    public double edgeClusterSize() { return edgeClusterSize; }
+
+    /** How far edge blocks scatter outward onto surrounding terrain, in blocks. 0 = none. */
+    public double edgeReach() { return edgeReach; }
 
     public double defaultClusterSize() { return defaultClusterSize; }
 
@@ -92,7 +109,7 @@ public final class PathStyle {
 
     // ---- Factories ---------------------------------------------------------------------------
 
-    /** The real organic look: multi-material core + coarse-dirt/moss edge shoulder, wobbled + feathered. */
+    /** The real organic look: multi-material core, coarse-dirt/moss edge shoulder, rugged + melded. */
     public static PathStyle defaults() {
         double cluster = 5.0;
         List<Entry> core = List.of(
@@ -102,13 +119,15 @@ public final class PathStyle {
         List<Entry> edge = List.of(
                 new Entry("minecraft:coarse_dirt", 1.0, 0.1, cluster),
                 new Entry("minecraft:moss_block", 0.6, 0.1, cluster));
-        return new PathStyle(core, edge, 0.5, 5.0, 0.5, 0.4, cluster);
+        // core, edge, edgeErosion, edgeFeatureSize, coreProtect, blendDepth, edgeCoverage,
+        // edgeClusterSize, edgeReach, defaultClusterSize
+        return new PathStyle(core, edge, 1.5, 5.0, 0.4, 2.0, 0.5, 4.0, 2.0, cluster);
     }
 
-    /** True identity: no erosion, no feather, fully protected core, single dirt_path, no edge shoulder. */
+    /** True identity: no erosion, no scatter, no reach, fully protected core, single dirt_path. */
     public static PathStyle neutral() {
         return new PathStyle(List.of(new Entry("minecraft:dirt_path", 1.0, 0.1, 5.0)),
-                List.of(), 0.0, 5.0, 0.0, 1.0, 5.0);
+                List.of(), 0.0, 5.0, 1.0, 0.0, 0.0, 4.0, 0.0, 5.0);
     }
 
     // ---- JSON --------------------------------------------------------------------------------
@@ -117,10 +136,13 @@ public final class PathStyle {
         Dto dto = new Dto();
         dto.core = toRaw(core);
         dto.edge = toRaw(edge);
-        dto.edgeRoughness = edgeRoughness;
+        dto.edgeErosion = edgeErosion;
         dto.edgeFeatureSize = edgeFeatureSize;
-        dto.featherDepth = featherDepth;
         dto.coreProtect = coreProtect;
+        dto.blendDepth = blendDepth;
+        dto.edgeCoverage = edgeCoverage;
+        dto.edgeClusterSize = edgeClusterSize;
+        dto.edgeReach = edgeReach;
         dto.defaultClusterSize = defaultClusterSize;
         return GSON.toJson(dto);
     }
@@ -136,23 +158,28 @@ public final class PathStyle {
     }
 
     /**
-     * Parses a style from JSON. Missing scalars fall back to {@link #defaults()}; a missing/empty
-     * core palette falls back to the default core. Pure — no IO. Throws {@link IllegalArgumentException}
-     * on an invalid entry (weight/clusterSize <= 0) via the constructor's eager validation.
+     * Parses a style from JSON. Missing scalars fall back to {@link #defaults()} (old saved styles
+     * lacking the new fields simply load with default edges). A missing/empty core palette falls back
+     * to the default core. Pure — no IO. Throws {@link IllegalArgumentException} on an invalid entry
+     * (weight/clusterSize <= 0) via the constructor's eager validation.
      */
     public static PathStyle fromJson(String json) {
         Dto raw = GSON.fromJson(json, Dto.class);
         if (raw == null) return defaults();
         PathStyle d = defaults();
-        double roughness = raw.edgeRoughness != null ? raw.edgeRoughness : d.edgeRoughness;
+        double erosion = raw.edgeErosion != null ? raw.edgeErosion : d.edgeErosion;
         double featureSize = raw.edgeFeatureSize != null ? raw.edgeFeatureSize : d.edgeFeatureSize;
-        double feather = raw.featherDepth != null ? raw.featherDepth : d.featherDepth;
         double core0 = raw.coreProtect != null ? raw.coreProtect : d.coreProtect;
+        double blend = raw.blendDepth != null ? raw.blendDepth : d.blendDepth;
+        double coverage = raw.edgeCoverage != null ? raw.edgeCoverage : d.edgeCoverage;
+        double edgeCluster = raw.edgeClusterSize != null ? raw.edgeClusterSize : d.edgeClusterSize;
+        double reach = raw.edgeReach != null ? raw.edgeReach : d.edgeReach;
         double cluster = raw.defaultClusterSize != null ? raw.defaultClusterSize : d.defaultClusterSize;
         List<Entry> core = parseEntries(raw.core, cluster);
         List<Entry> edge = parseEntries(raw.edge, cluster);
         if (core.isEmpty()) core = d.core;
-        return new PathStyle(core, edge, roughness, featureSize, feather, core0, cluster);
+        return new PathStyle(core, edge, erosion, featureSize, core0, blend, coverage, edgeCluster,
+                reach, cluster);
     }
 
     private static List<Entry> parseEntries(List<RawEntry> raw, double defaultCluster) {
@@ -173,17 +200,20 @@ public final class PathStyle {
     @Override public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof PathStyle p)) return false;
-        return Double.compare(p.edgeRoughness, edgeRoughness) == 0
+        return Double.compare(p.edgeErosion, edgeErosion) == 0
                 && Double.compare(p.edgeFeatureSize, edgeFeatureSize) == 0
-                && Double.compare(p.featherDepth, featherDepth) == 0
                 && Double.compare(p.coreProtect, coreProtect) == 0
+                && Double.compare(p.blendDepth, blendDepth) == 0
+                && Double.compare(p.edgeCoverage, edgeCoverage) == 0
+                && Double.compare(p.edgeClusterSize, edgeClusterSize) == 0
+                && Double.compare(p.edgeReach, edgeReach) == 0
                 && Double.compare(p.defaultClusterSize, defaultClusterSize) == 0
                 && core.equals(p.core) && edge.equals(p.edge);
     }
 
     @Override public int hashCode() {
-        return Objects.hash(core, edge, edgeRoughness, edgeFeatureSize, featherDepth, coreProtect,
-                defaultClusterSize);
+        return Objects.hash(core, edge, edgeErosion, edgeFeatureSize, coreProtect, blendDepth,
+                edgeCoverage, edgeClusterSize, edgeReach, defaultClusterSize);
     }
 
     // Gson serializes the object graph directly; this Dto mirrors the same field names for parsing
@@ -191,10 +221,13 @@ public final class PathStyle {
     private static final class Dto {
         List<RawEntry> core;
         List<RawEntry> edge;
-        Double edgeRoughness;
+        Double edgeErosion;
         Double edgeFeatureSize;
-        Double featherDepth;
         Double coreProtect;
+        Double blendDepth;
+        Double edgeCoverage;
+        Double edgeClusterSize;
+        Double edgeReach;
         Double defaultClusterSize;
     }
     private static final class RawEntry { String id; Double weight; Double noiseScale; Double clusterSize; }

@@ -84,8 +84,11 @@ public final class EditPlanBuilder {
         double halfWidth = width / 2.0;
         double coreRadius = style.coreProtect() * halfWidth;      // protected spine
         double edgeBandWidth = Math.max(0.0, halfWidth - coreRadius); // the movable outer band
-        double erosionAmp = style.edgeRoughness() * edgeBandWidth; // <= edgeBandWidth (roughness in [0,1])
-        double featherBand = style.featherDepth() * edgeBandWidth;
+        // TEMP (Task 2): erosion still capped at the band and feather now absolute, so the build stays
+        // green with the existing EdgeBandEngine. Task 3 removes the cap, adds the core-protection
+        // clamp, and swaps in EdgeScatterEngine + edgeReach.
+        double erosionAmp = Math.min(style.edgeErosion(), edgeBandWidth);
+        double featherBand = style.blendDepth();
         double edgeScale = 1.0 / Math.max(1e-3, style.edgeFeatureSize());
 
         // Track columns out to the max outward wobble so ragged edges can bulge OUTWARD, not just

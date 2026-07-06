@@ -101,20 +101,26 @@ public final class PathStylePanel implements IGuiOverlay {
         y = paletteRows(g, font, cx, y, x + PANEL_W - PAD, s.edge(), false, slots, sliders, 0.0, 10.0);
         slots.add(new SlotRect(false, s.edge().size(), cx, y));
         drawAddSlot(g, cx, y); y += BlockSlotWidget.SIZE + 6;
-        // Feather depth slider (0..1 fraction of the movable edge band)
-        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Feather depth", s.featherDepth(),
-                "feather", 0, 0, 1, sliders);
+        // Feather depth (inward blend), in blocks
+        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Blend depth", s.blendDepth(),
+                "blend", 0, 0, 8, sliders);
+        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge coverage", s.edgeCoverage(),
+                "coverage", 0, 0, 1, sliders);
+        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge cluster", s.edgeClusterSize(),
+                "edgecluster", 0, 1, 16, sliders);
+        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge reach", s.edgeReach(),
+                "reach", 0, 0, 6, sliders);
 
         // Advanced
         y = section(g, font, cx, y, x + PANEL_W - PAD, "ADVANCED");
-        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Cluster size", s.defaultClusterSize(),
-                "cluster", 0, 1, 20, sliders);
-        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge roughness", s.edgeRoughness(),
-                "roughness", 0, 0, 1, sliders);
+        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge erosion", s.edgeErosion(),
+                "erosion", 0, 0, 8, sliders);
         y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge feature size", s.edgeFeatureSize(),
                 "feature", 0, 1, 16, sliders);
         y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Core protect", s.coreProtect(),
                 "core", 0, 0, 1, sliders);
+        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Core cluster size", s.defaultClusterSize(),
+                "cluster", 0, 1, 20, sliders);
 
         g.disableScissor();
         // Content height = last y (scrolled) + scroll back to unscrolled space, minus the visible top.

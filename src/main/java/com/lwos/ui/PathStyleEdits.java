@@ -11,8 +11,8 @@ public final class PathStyleEdits {
     private PathStyleEdits() { }
 
     private static PathStyle rebuild(List<PathStyle.Entry> core, List<PathStyle.Entry> edge, PathStyle s) {
-        return new PathStyle(core, edge, s.edgeRoughness(), s.edgeFeatureSize(),
-                s.featherDepth(), s.coreProtect(), s.defaultClusterSize());
+        return new PathStyle(core, edge, s.edgeErosion(), s.edgeFeatureSize(), s.coreProtect(),
+                s.blendDepth(), s.edgeCoverage(), s.edgeClusterSize(), s.edgeReach(), s.defaultClusterSize());
     }
 
     public static void setCoreSlotBlock(int index, String blockId) {
@@ -55,10 +55,53 @@ public final class PathStyleEdits {
         StyleManager.setActive(rebuild(new ArrayList<>(s.core()), edge, s));
     }
 
-    public static void setFeatherDepth(double v) {
+    public static void setEdgeErosion(double v) {
         PathStyle s = StyleManager.active();
         StyleManager.setActive(new PathStyle(new ArrayList<>(s.core()), new ArrayList<>(s.edge()),
-                s.edgeRoughness(), s.edgeFeatureSize(), v, s.coreProtect(), s.defaultClusterSize()));
+                v, s.edgeFeatureSize(), s.coreProtect(), s.blendDepth(), s.edgeCoverage(),
+                s.edgeClusterSize(), s.edgeReach(), s.defaultClusterSize()));
+    }
+
+    public static void setEdgeFeatureSize(double v) {
+        PathStyle s = StyleManager.active();
+        StyleManager.setActive(new PathStyle(new ArrayList<>(s.core()), new ArrayList<>(s.edge()),
+                s.edgeErosion(), Math.max(0.001, v), s.coreProtect(), s.blendDepth(), s.edgeCoverage(),
+                s.edgeClusterSize(), s.edgeReach(), s.defaultClusterSize()));
+    }
+
+    public static void setCoreProtect(double v) {
+        PathStyle s = StyleManager.active();
+        StyleManager.setActive(new PathStyle(new ArrayList<>(s.core()), new ArrayList<>(s.edge()),
+                s.edgeErosion(), s.edgeFeatureSize(), v, s.blendDepth(), s.edgeCoverage(),
+                s.edgeClusterSize(), s.edgeReach(), s.defaultClusterSize()));
+    }
+
+    public static void setBlendDepth(double v) {
+        PathStyle s = StyleManager.active();
+        StyleManager.setActive(new PathStyle(new ArrayList<>(s.core()), new ArrayList<>(s.edge()),
+                s.edgeErosion(), s.edgeFeatureSize(), s.coreProtect(), v, s.edgeCoverage(),
+                s.edgeClusterSize(), s.edgeReach(), s.defaultClusterSize()));
+    }
+
+    public static void setEdgeCoverage(double v) {
+        PathStyle s = StyleManager.active();
+        StyleManager.setActive(new PathStyle(new ArrayList<>(s.core()), new ArrayList<>(s.edge()),
+                s.edgeErosion(), s.edgeFeatureSize(), s.coreProtect(), s.blendDepth(), v,
+                s.edgeClusterSize(), s.edgeReach(), s.defaultClusterSize()));
+    }
+
+    public static void setEdgeClusterSize(double v) {
+        PathStyle s = StyleManager.active();
+        StyleManager.setActive(new PathStyle(new ArrayList<>(s.core()), new ArrayList<>(s.edge()),
+                s.edgeErosion(), s.edgeFeatureSize(), s.coreProtect(), s.blendDepth(), s.edgeCoverage(),
+                Math.max(0.5, v), s.edgeReach(), s.defaultClusterSize()));
+    }
+
+    public static void setEdgeReach(double v) {
+        PathStyle s = StyleManager.active();
+        StyleManager.setActive(new PathStyle(new ArrayList<>(s.core()), new ArrayList<>(s.edge()),
+                s.edgeErosion(), s.edgeFeatureSize(), s.coreProtect(), s.blendDepth(), s.edgeCoverage(),
+                s.edgeClusterSize(), v, s.defaultClusterSize()));
     }
 
     public static void setClusterSize(double cluster) {
@@ -66,26 +109,9 @@ public final class PathStyleEdits {
         double c = Math.max(0.5, cluster);
         List<PathStyle.Entry> core = new ArrayList<>();
         for (PathStyle.Entry e : s.core()) core.add(new PathStyle.Entry(e.id(), e.weight(), e.noiseScale(), c));
-        StyleManager.setActive(new PathStyle(core, new ArrayList<>(s.edge()),
-                s.edgeRoughness(), s.edgeFeatureSize(), s.featherDepth(), s.coreProtect(), c));
-    }
-
-    public static void setEdgeRoughness(double v) {
-        PathStyle s = StyleManager.active();
-        StyleManager.setActive(new PathStyle(new ArrayList<>(s.core()), new ArrayList<>(s.edge()),
-                v, s.edgeFeatureSize(), s.featherDepth(), s.coreProtect(), s.defaultClusterSize()));
-    }
-
-    public static void setEdgeFeatureSize(double v) {
-        PathStyle s = StyleManager.active();
-        StyleManager.setActive(new PathStyle(new ArrayList<>(s.core()), new ArrayList<>(s.edge()),
-                s.edgeRoughness(), Math.max(0.001, v), s.featherDepth(), s.coreProtect(), s.defaultClusterSize()));
-    }
-
-    public static void setCoreProtect(double v) {
-        PathStyle s = StyleManager.active();
-        StyleManager.setActive(new PathStyle(new ArrayList<>(s.core()), new ArrayList<>(s.edge()),
-                s.edgeRoughness(), s.edgeFeatureSize(), s.featherDepth(), v, s.defaultClusterSize()));
+        StyleManager.setActive(new PathStyle(core, new ArrayList<>(s.edge()), s.edgeErosion(),
+                s.edgeFeatureSize(), s.coreProtect(), s.blendDepth(), s.edgeCoverage(), s.edgeClusterSize(),
+                s.edgeReach(), c));
     }
 
     public static void removeCoreSlot(int index) {
