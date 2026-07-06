@@ -165,10 +165,11 @@ public final class PathStylePanelInput {
         switch (s.target()) {
             case "coreWeight" -> PathStyleEdits.setCoreWeight(s.index(), value);
             case "edgeWeight" -> PathStyleEdits.setEdgeWeight(s.index(), value);
-            case "blend"      -> PathStyleEdits.setBlendSkirt((int) Math.round(value));
+            case "feather"    -> PathStyleEdits.setFeatherDepth(value);
             case "cluster"    -> PathStyleEdits.setClusterSize(value);
-            case "erosion"    -> PathStyleEdits.setEdgeErosion(value);
-            case "noise"      -> PathStyleEdits.setEdgeNoise(value);
+            case "roughness"  -> PathStyleEdits.setEdgeRoughness(value);
+            case "feature"    -> PathStyleEdits.setEdgeFeatureSize(value);
+            case "core"       -> PathStyleEdits.setCoreProtect(value);
             default -> { }
         }
     }

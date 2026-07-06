@@ -42,15 +42,6 @@ public final class EditPlanBuilder {
     private static final double EDGE_PERSISTENCE = 0.5;
     private static final double EDGE_LACUNARITY = 2.0;
 
-    // The organic amplitudes (edgeErosionFactor, blendSkirtWidth) are ABSOLUTE block distances tuned
-    // for wide paths. On a narrow path they exceed the path's half-width and erode+feather the whole
-    // footprint away — a default width-3 path (half-width 1.5) collapsed from ~28 columns to 1, making
-    // the preview invisible. Clamp both to a fraction of the half-width so a solid, visible core always
-    // survives at every width (including a user-set width of 1-2). Pure function of width, so the client
-    // preview and server apply clamp identically (preview==apply preserved).
-    private static final double EDGE_EROSION_MAX_FRACTION = 0.5;
-    private static final double FEATHER_MAX_FRACTION = 0.5;
-
     // Distinct salts so the three organic stages sample independent noise fields off one base seed,
     // rather than accidentally sharing a pattern (mixed via XOR into the derived operation seed).
     private static final long EDGE_SALT = 0xD1B54A32D192ED03L;
@@ -85,7 +76,22 @@ public final class EditPlanBuilder {
         // The footprint (which columns the path covers) is derived from the terrain-snapped samples in
         // every mode, so switching modes changes only the Y handling, never the plan's horizontal extent.
         List<PathSample> grounded = TerrainSampler.snapToSurface(raw, view, 0.0);
-        PathMask mask = PathMask.build(grounded);
+
+        // Resolve the width-relative style knobs to absolute-block amplitudes. Pure function of
+        // (width, style): the client preview and the server apply compute identical values, so
+        // preview==apply is preserved. A protected core spine (coreProtect fraction of the half-width)
+        // is never eroded or feathered, so no path — however narrow — collapses to nothing.
+        double halfWidth = width / 2.0;
+        double coreRadius = style.coreProtect() * halfWidth;      // protected spine
+        double edgeBandWidth = Math.max(0.0, halfWidth - coreRadius); // the movable outer band
+        double erosionAmp = style.edgeRoughness() * edgeBandWidth; // <= edgeBandWidth (roughness in [0,1])
+        double featherBand = style.featherDepth() * edgeBandWidth;
+        double edgeScale = 1.0 / Math.max(1e-3, style.edgeFeatureSize());
+
+        // Track columns out to the max outward wobble so ragged edges can bulge OUTWARD, not just
+        // erode inward (a fixed 0.5 halo would cap outward growth at half a block).
+        double halo = Math.ceil(erosionAmp) + 1.0;
+        PathMask original = PathMask.build(grounded, halo);
 
         // Derive a stable operation seed from the control points and split it into per-stage sub-seeds
         // so the noise fields don't correlate.
@@ -95,31 +101,27 @@ public final class EditPlanBuilder {
         long blendSeed = seed ^ BLEND_SALT;
         long bandSeed = seed ^ BAND_SALT;
 
-        // Clamp the organic amplitudes to the path's half-width so a narrow path keeps a solid core
-        // (see EDGE_EROSION_MAX_FRACTION / FEATHER_MAX_FRACTION). Deterministic in width.
-        double halfWidth = width / 2.0;
-        double effErosion = Math.min(style.edgeErosionFactor(), halfWidth * EDGE_EROSION_MAX_FRACTION);
-        int effSkirt = Math.min(style.blendSkirtWidth(), (int) Math.floor(halfWidth * FEATHER_MAX_FRACTION));
-
-        // Stage 1 (edge wobble): amplitude 0 (neutral) leaves the mask untouched; EdgeShaper shapes the
-        // shared mask, so both FOLLOW_SURFACE and CUT_AND_FILL inherit the same wandering boundary.
-        mask = new EdgeShaper(style.edgeNoiseScale(), effErosion,
-                EDGE_OCTAVES, EDGE_PERSISTENCE, EDGE_LACUNARITY).shape(mask, edgeSeed);
+        // Stage 1 (edge wobble): shape a copy; keep `original` for the protected-core test below.
+        // Amplitude 0 (neutral) leaves the mask untouched; both FOLLOW_SURFACE and CUT_AND_FILL inherit
+        // the same wandering boundary.
+        PathMask shaped = new EdgeShaper(edgeScale, erosionAmp,
+                EDGE_OCTAVES, EDGE_PERSISTENCE, EDGE_LACUNARITY).shape(original, edgeSeed);
 
         // Stage 2 (material gradient): per-column clustered block choice. A single-entry palette
         // (neutral) always returns that one block, reproducing the pre-M5 uniform look.
         GradientEngine gradient = new GradientEngine(gradSeed, style.toCorePalette());
 
-        // Stage 3 (feather blend): near-edge inside columns may be dropped back to terrain. Guarded so
-        // skirt 0 (neutral, or a path too narrow to feather) keeps EVERY inside column (BlendEngine
-        // requires skirt > 0).
-        BlendEngine blend = effSkirt > 0 ? new BlendEngine(blendSeed, effSkirt) : null;
-        // Stage 4 (M6 edge shoulder): only when we both feather (effSkirt>0) and have an edge palette.
-        EdgeBandEngine edgeBand = (effSkirt > 0 && style.toEdgePalette().isPresent())
-                ? new EdgeBandEngine(bandSeed, effSkirt, style.toEdgePalette().get()) : null;
+        // Stage 3 (feather blend): near-edge inside columns may be dropped back to terrain. Active only
+        // when there is a movable band to feather (featherBand > 0).
+        BlendEngine blend = featherBand > 0 ? new BlendEngine(blendSeed, featherBand) : null;
+        // Stage 4 (M6 edge shoulder): only when we both feather and have an edge palette. The discrete
+        // shoulder dithers over a whole-block skirt, so round the fractional feather band up.
+        int shoulderSkirt = (int) Math.ceil(featherBand);
+        EdgeBandEngine edgeBand = (blend != null && style.toEdgePalette().isPresent())
+                ? new EdgeBandEngine(bandSeed, shoulderSkirt, style.toEdgePalette().get()) : null;
 
         Map<GridPos, PlannedChange> changes = new LinkedHashMap<>();
-        for (ColumnPos c : sortedColumns(mask.insideColumns())) {
+        for (ColumnPos c : sortedColumns(shaped.insideColumns())) {
             int surfaceY = view.surfaceHeight(c.x(), c.z());
             if (mode == TerrainMode.CUT_AND_FILL) {
                 // Feathering is deliberately NOT applied to CUT_AND_FILL: dropping columns out of a carve
@@ -131,12 +133,16 @@ public final class EditPlanBuilder {
                 BlockStateRef pathBlock = gradient.blockAt(c.x(), pathY, c.z());
                 emitCutAndFill(changes, c, surfaceY, pathY, pathBlock);
             } else {
-                // FOLLOW_SURFACE: feather first — a dropped column may still get an edge-shoulder block
-                // (dense next to the core, dithering out to terrain at the rim); otherwise it is left as
-                // original terrain. Kept columns get a clustered material from the gradient.
-                if (blend != null && !blend.keepsPathBlock(mask, c.x(), c.z())) {
+                // FOLLOW_SURFACE: protected core first — a column whose ORIGINAL (pre-erosion) distance is
+                // within coreRadius (edgeDistance <= -edgeBandWidth) is always kept, never feathered.
+                // Because erosionAmp <= edgeBandWidth, erosion also can't push a core column's shaped
+                // distance above 0, so it stays inside; this stops erosion + feather compounding into the
+                // spine. Otherwise feather may drop the column, which may still get an edge-shoulder block
+                // (dense next to the core, dithering out to terrain at the rim).
+                boolean inCore = original.edgeDistance(c.x(), c.z()) <= -edgeBandWidth;
+                if (blend != null && !inCore && !blend.keepsPathBlock(shaped, c.x(), c.z())) {
                     if (edgeBand != null) {
-                        var edge = edgeBand.edgeBlockAt(mask, c.x(), c.z());
+                        var edge = edgeBand.edgeBlockAt(shaped, c.x(), c.z());
                         if (edge.isPresent()) {
                             GridPos pos = new GridPos(c.x(), surfaceY, c.z());
                             changes.put(pos, new PlannedChange(pos, ChangeKind.TERRAIN, edge.get()));

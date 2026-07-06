@@ -10,8 +10,9 @@ class PathStyleTest {
     @Test
     void neutralIsATrueIdentity() {
         PathStyle s = PathStyle.neutral();
-        assertEquals(0.0, s.edgeErosionFactor());
-        assertEquals(0, s.blendSkirtWidth());
+        assertEquals(0.0, s.edgeRoughness(), "neutral does not erode the edge");
+        assertEquals(0.0, s.featherDepth(), "neutral does not feather");
+        assertEquals(1.0, s.coreProtect(), "neutral protects the whole footprint");
         assertEquals(1, s.core().size());
         assertEquals("minecraft:dirt_path", s.core().get(0).id());
         assertTrue(s.edge().isEmpty(), "neutral has no edge shoulder");
@@ -23,7 +24,9 @@ class PathStyleTest {
         PathStyle s = PathStyle.defaults();
         assertTrue(s.core().size() > 1, "defaults offer clustered core materials");
         assertFalse(s.edge().isEmpty(), "defaults include an edge shoulder");
-        assertTrue(s.blendSkirtWidth() > 0);
+        assertTrue(s.featherDepth() > 0, "defaults feather the edge");
+        assertTrue(s.edgeRoughness() > 0, "defaults wobble the edge");
+        assertTrue(s.coreProtect() > 0 && s.coreProtect() < 1, "defaults keep a protected spine but allow a band");
         assertTrue(s.toEdgePalette().isPresent());
     }
 

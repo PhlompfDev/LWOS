@@ -101,18 +101,20 @@ public final class PathStylePanel implements IGuiOverlay {
         y = paletteRows(g, font, cx, y, x + PANEL_W - PAD, s.edge(), false, slots, sliders, 0.0, 10.0);
         slots.add(new SlotRect(false, s.edge().size(), cx, y));
         drawAddSlot(g, cx, y); y += BlockSlotWidget.SIZE + 6;
-        // Blend amount slider
-        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Blend amount", s.blendSkirtWidth(),
-                "blend", 0, 0, 8, sliders);
+        // Feather depth slider (0..1 fraction of the movable edge band)
+        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Feather depth", s.featherDepth(),
+                "feather", 0, 0, 1, sliders);
 
         // Advanced
         y = section(g, font, cx, y, x + PANEL_W - PAD, "ADVANCED");
         y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Cluster size", s.defaultClusterSize(),
                 "cluster", 0, 1, 20, sliders);
-        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge erosion", s.edgeErosionFactor(),
-                "erosion", 0, 0, 4, sliders);
-        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge noise", s.edgeNoiseScale(),
-                "noise", 0, 0.01, 0.3, sliders);
+        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge roughness", s.edgeRoughness(),
+                "roughness", 0, 0, 1, sliders);
+        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Edge feature size", s.edgeFeatureSize(),
+                "feature", 0, 1, 16, sliders);
+        y = labeledSlider(g, font, cx, y, PANEL_W - 2 * PAD, "Core protect", s.coreProtect(),
+                "core", 0, 0, 1, sliders);
 
         g.disableScissor();
         // Content height = last y (scrolled) + scroll back to unscrolled space, minus the visible top.
