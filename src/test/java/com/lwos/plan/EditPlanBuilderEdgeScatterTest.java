@@ -98,6 +98,16 @@ class EditPlanBuilderEdgeScatterTest {
     }
 
     @Test
+    void cutAndFillSuppressesOutwardScatter() {
+        // Cut/fill keeps its carved footprint; columns with d > 0 must never scatter, even with
+        // non-zero edgeCoverage and edgeReach that would otherwise place an outward edge shoulder.
+        EditPlan plan = EditPlanBuilder.build(STRAIGHT, EditPlanBuilder.DEFAULT_SPACING, 8.0, flat(),
+                TerrainMode.CUT_AND_FILL, style(1.5, 2.0, 1.0, 4.0, 4.0, 0.4));
+        long edge = plan.changes().values().stream().filter(c -> isEdgeMaterial(c.state().id())).count();
+        assertEquals(0, edge, "CUT_AND_FILL must never place scattered edge-shoulder blocks");
+    }
+
+    @Test
     void neutralStyleProducesNoEdgeShoulder() {
         EditPlan plan = EditPlanBuilder.build(STRAIGHT, EditPlanBuilder.DEFAULT_SPACING, 8.0, flat(),
                 TerrainMode.FOLLOW_SURFACE, PathStyle.neutral());

@@ -50,6 +50,29 @@ class PathStyleTest {
     }
 
     @Test
+    void fromJsonIgnoresLegacyKeysDefaultsScalarsAndLeavesEdgeEmpty() {
+        // Pre-overhaul styleJson: only the removed OrganicTunables-era keys, none of the new ones.
+        // Unknown legacy keys are ignored; missing scalars and the missing core fall back to
+        // defaults(). The empty edge palette is the documented missing-edge behaviour (safe: the
+        // builder gates scatter on toEdgePalette().isPresent()), not a defaulting gap.
+        String legacy = """
+                { "edgeRoughness": 0.5, "featherDepth": 0.5 }
+                """;
+        PathStyle s = assertDoesNotThrow(() -> PathStyle.fromJson(legacy));
+        PathStyle d = PathStyle.defaults();
+        assertEquals(d.edgeErosion(), s.edgeErosion(), "missing edgeErosion falls back to defaults");
+        assertEquals(d.edgeFeatureSize(), s.edgeFeatureSize(), "missing edgeFeatureSize falls back to defaults");
+        assertEquals(d.coreProtect(), s.coreProtect(), "missing coreProtect falls back to defaults");
+        assertEquals(d.blendDepth(), s.blendDepth(), "missing blendDepth falls back to defaults");
+        assertEquals(d.edgeCoverage(), s.edgeCoverage(), "missing edgeCoverage falls back to defaults");
+        assertEquals(d.edgeClusterSize(), s.edgeClusterSize(), "missing edgeClusterSize falls back to defaults");
+        assertEquals(d.edgeReach(), s.edgeReach(), "missing edgeReach falls back to defaults");
+        assertEquals(d.defaultClusterSize(), s.defaultClusterSize(), "missing defaultClusterSize falls back to defaults");
+        assertEquals(d.core(), s.core(), "missing core palette falls back to the default core");
+        assertTrue(s.toEdgePalette().isEmpty(), "missing edge palette stays empty — no edge scatter");
+    }
+
+    @Test
     void toCorePaletteMapsEveryEntry() {
         PathStyle s = PathStyle.defaults();
         Palette p = s.toCorePalette();

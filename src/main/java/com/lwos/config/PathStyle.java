@@ -81,7 +81,7 @@ public final class PathStyle {
     /** Inward feather skirt depth, in blocks. 0 = hard edge. */
     public double blendDepth() { return blendDepth; }
 
-    /** Edge-scatter density (0..1): how many edge blocks appear. 0 = none, 1 = solid shoulder. */
+    /** Edge-scatter density (0..1): how many edge blocks appear. 0 = none, 1 = maximum density. */
     public double edgeCoverage() { return edgeCoverage; }
 
     /** Edge-scatter patch size, in blocks: big = broad clumps, small = fine speckle. */

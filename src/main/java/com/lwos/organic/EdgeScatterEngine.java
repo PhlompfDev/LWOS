@@ -63,6 +63,9 @@ public final class EdgeScatterEngine {
     /**
      * Density shaping: 1.0 at the rim ({@code d = 0}), smoothstepping to 0.0 at the inner limit
      * ({@code d = -blendDepth}) and the outer limit ({@code d = edgeReach}); 0.0 outside the band.
+     * The rim value belongs to the inner band: when {@code blendDepth} is 0 there is no inner band
+     * to smoothstep across, so {@code falloff(0)} is 0 even though {@code falloff(0+epsilon)} (the
+     * start of the outward band) approaches 1.
      */
     double falloff(double d) {
         if (d <= 0.0) {
