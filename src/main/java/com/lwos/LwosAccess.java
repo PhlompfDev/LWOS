@@ -10,13 +10,18 @@ package com.lwos;
  */
 public final class LwosAccess {
 
-    /** The only player permitted to use the builder tools. */
-    public static final String ALLOWED_NAME = "Plomph";
+    /** Players permitted to use the builder tools. */
+    private static final String[] ALLOWED_NAMES = { "Plomph", "Dev" };
 
     private LwosAccess() { }
 
-    /** True only for the authorized player's account name. */
+    /** True only for an authorized player's account name. */
     public static boolean isAllowed(String playerName) {
-        return ALLOWED_NAME.equals(playerName);
+        for (String name : ALLOWED_NAMES) {
+            if (name.equals(playerName)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
