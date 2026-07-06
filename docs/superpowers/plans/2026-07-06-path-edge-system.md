@@ -789,6 +789,21 @@ class EditPlanBuilderEdgeScatterTest {
         assertEquals(a.changes(), b.changes(), "preview==apply: identical inputs must yield an identical plan");
     }
 
+    @Test
+    void narrowDefaultWidthPathStaysVisible() {
+        // Regression (vanished-preview bug): at the in-game default width 3 the absolute erosion (1.5)
+        // and feather (blend 2) both meet/exceed the half-width (1.5). The core-protection clamp must
+        // keep a solid, visible spine so the footprint is never eroded/feathered away to nothing.
+        // (Relocated from EditPlanBuilderTest, which asserted this against the pre-clamp pipeline.)
+        List<Vec3d> shortPath = List.of(new Vec3d(0, 64, 0), new Vec3d(6, 64, 0));
+        int neutral = EditPlanBuilder.build(shortPath, EditPlanBuilder.DEFAULT_SPACING, 3.0, flat(),
+                TerrainMode.FOLLOW_SURFACE, PathStyle.neutral()).changes().size();
+        int organic = EditPlanBuilder.build(shortPath, EditPlanBuilder.DEFAULT_SPACING, 3.0, flat(),
+                TerrainMode.FOLLOW_SURFACE, PathStyle.defaults()).changes().size();
+        assertTrue(organic >= neutral / 2,
+                "a default width-3 path must keep a visible core; kept " + organic + " of " + neutral);
+    }
+
     // --- helpers -------------------------------------------------------------------------------
 
     private long countEdge(double coverage) {
@@ -942,7 +957,7 @@ git rm src/main/java/com/lwos/organic/EdgeBandEngine.java src/test/java/com/lwos
 - [ ] **Step 5: Run the new test to verify it passes**
 
 Run: `./gradlew test --tests "com.lwos.plan.EditPlanBuilderEdgeScatterTest"`
-Expected: PASS (8 tests).
+Expected: PASS (9 tests).
 
 - [ ] **Step 6: Run the full suite and build**
 
