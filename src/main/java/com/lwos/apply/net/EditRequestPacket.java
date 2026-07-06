@@ -68,6 +68,7 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width, Terrain
             if (sender == null || msg.controlPoints().isEmpty()) return;
             ServerLevel level = sender.serverLevel();
             double width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, msg.width()));
+
             // Deterministic rebuild from the sender's own world view — never trust client blocks (spec §6).
             // The committed style rides the packet so apply matches preview. Parse defensively: a
             // malformed blob falls back to defaults rather than crashing the server thread.
@@ -76,11 +77,10 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width, Terrain
             catch (RuntimeException e) { style = PathStyle.defaults(); }
             EditPlan plan = EditPlanBuilder.build(
                     msg.controlPoints(), EditPlanBuilder.DEFAULT_SPACING, width, new ServerWorldView(level),
-                    msg.mode(), OrganicTunables.current());
-            // Bedrock is only replaceable in creative — survival commits leave the world floor intact.
-            PlacementEngine.apply(level, plan, sender.isCreative());
                     msg.mode(), style);
-            java.util.List<com.lwos.apply.UndoHistory.BlockSnapshot> priors = PlacementEngine.apply(level, plan);
+            // Bedrock is only replaceable in creative — survival commits leave the world floor intact.
+            java.util.List<com.lwos.apply.UndoHistory.BlockSnapshot> priors =
+                    PlacementEngine.apply(level, plan, sender.isCreative());
             if (!priors.isEmpty()) com.lwos.apply.LwosServerState.UNDO.push(sender.getUUID(), priors);
         });
         context.setPacketHandled(true);

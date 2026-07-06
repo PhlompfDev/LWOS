@@ -28,11 +28,14 @@ public final class PlacementEngine {
     private PlacementEngine() { }
 
     /**
+     * Applies the plan and returns the prior states it overwrote (for the per-player undo stack).
+     *
      * @param canReplaceBedrock whether the committing player may overwrite bedrock (true only in
      *                          creative). When false, any change targeting an existing bedrock block
      *                          is skipped so survival edits can't punch through the world floor.
      */
-    public static void apply(ServerLevel level, EditPlan plan, boolean canReplaceBedrock) {
+    public static List<BlockSnapshot> apply(ServerLevel level, EditPlan plan, boolean canReplaceBedrock) {
+        List<BlockSnapshot> priors = new ArrayList<>();
         for (PlannedChange change : plan.changes().values()) {
             BlockState state = resolve(change.state());
             if (state == null) continue; // unknown block id — skip rather than crash
@@ -41,6 +44,7 @@ public final class PlacementEngine {
             // Protect bedrock outside creative: leave the existing block untouched (spec: no carving
             // or overwriting the bedrock floor in survival).
             if (!canReplaceBedrock && level.getBlockState(pos).is(Blocks.BEDROCK)) continue;
+            priors.add(new BlockSnapshot(p, toRef(level.getBlockState(pos))));
             level.setBlock(pos, state, Block.UPDATE_ALL);
         }
         return priors;
