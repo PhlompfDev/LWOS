@@ -9,7 +9,7 @@ import java.util.Optional;
 /**
  * Decides, per column, whether to place an edge-palette block, giving the builder direct control
  * over how many edge blocks appear ({@code coverage}) and how patchy they are ({@code clusterSize}).
- * Supersedes {@link EdgeBandEngine}: the scatter band spans the inner feather skirt
+ * Supersedes the old fixed-skirt edge-band engine: the scatter band spans the inner feather skirt
  * ({@code -blendDepth < d <= 0}) AND an outward reach onto surrounding terrain
  * ({@code 0 < d <= edgeReach}), so the path melds into the ground instead of ending on a clean line.
  *
@@ -17,7 +17,7 @@ import java.util.Optional;
  * place iff {@code coverage * falloff(d) > coin(x,z)}, where {@code falloff} peaks at the rim
  * ({@code d ≈ 0}) and smoothsteps to 0 at each band limit, and {@code coin} is a seeded Perlin field
  * sampled at frequency {@code 1/clusterSize} — so cluster size actually drives the patch size
- * (the field {@link EdgeBandEngine} left fixed). The kept column's block is chosen by a
+ * (the old engine left this fixed). The kept column's block is chosen by a
  * {@link GradientEngine} over the edge palette so the scatter still clusters by material.
  *
  * <p>Pure and deterministic: same seed + inputs → byte-identical decisions.
