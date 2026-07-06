@@ -22,7 +22,7 @@ public record UndoRequestPacket() {
         NetworkEvent.Context context = ctx.get();
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
-            if (sender == null) return;
+            if (sender == null || !com.lwos.LwosAccess.isAllowed(sender.getGameProfile().getName())) return;
             ServerLevel level = sender.serverLevel();
             Optional<List<BlockSnapshot>> commit = LwosServerState.UNDO.pop(sender.getUUID());
             if (commit.isEmpty()) return;

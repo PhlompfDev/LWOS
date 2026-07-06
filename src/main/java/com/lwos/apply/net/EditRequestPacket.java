@@ -66,6 +66,9 @@ public record EditRequestPacket(List<Vec3d> controlPoints, double width, Terrain
         context.enqueueWork(() -> {
             ServerPlayer sender = context.getSender();
             if (sender == null || msg.controlPoints().isEmpty()) return;
+            // Authoritative access gate: only the authorized builder may mutate the world, so a
+            // modified client that bypasses the client-side gate is still rejected here (spec §6).
+            if (!com.lwos.LwosAccess.isAllowed(sender.getGameProfile().getName())) return;
             ServerLevel level = sender.serverLevel();
             double width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, msg.width()));
 

@@ -25,8 +25,6 @@ public final class LwosInputHandler {
     /** Look-ray miss distance (blocks) within which a use-click grabs a width handle. */
     private static final double HANDLE_PICK_RADIUS = 0.5;
 
-    /** Only these accounts drive the mod's tools; every mod keybind is inert for anyone else. */
-    private static final java.util.Set<String> MOD_USERS = java.util.Set.of("Plomph", "Dev");
     /** Max look-ray distance (blocks) for placing a path point on distant terrain. */
     private static final double MAX_PLACE_DISTANCE = 96.0;
 
@@ -37,10 +35,10 @@ public final class LwosInputHandler {
         return mc.level != null && mc.screen == null && mc.player != null;
     }
 
-    /** True only when the local player's account name is one of {@link #MOD_USERS}. */
+    /** True only when the local player is the authorized builder (see {@link com.lwos.LwosAccess}). */
     private static boolean isModUser() {
         Minecraft mc = Minecraft.getInstance();
-        return mc.player != null && MOD_USERS.contains(mc.player.getGameProfile().getName());
+        return mc.player != null && com.lwos.LwosAccess.isAllowed(mc.player.getGameProfile().getName());
     }
 
     private static boolean altHeld() {
