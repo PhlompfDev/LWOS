@@ -1,3 +1,13 @@
+## Always push finished work
+
+When a unit of work is complete and verified (build + tests green), push it to the
+branch where my working files live — normally `main`, or whichever branch is currently
+checked out and holds the real source. Concretely: commit the change, then
+`git push origin <current-branch>`. Don't leave finished, verified commits sitting
+only on my local machine, and don't wait to be told to push each time — this is
+standing authorization to push completed work. (Still branch first if I explicitly
+ask for a PR, and never force-push or push half-done/failing work.)
+
 ## Offloading large, low-value inputs
 
 Before reading a large stack trace, source file, or Java package just to
