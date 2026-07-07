@@ -94,8 +94,12 @@ public final class JournalTheme {
     public static void blitNineSlice(GuiGraphics g, ResourceLocation tex, int texW, int texH,
                                      int u, int v, int rw, int rh, int inset,
                                      int x, int y, int w, int h) {
-        RenderSystem.enableBlend();
         int cw = rw - 2 * inset, ch = rh - 2 * inset;  // source center size
+        if (cw <= 0 || ch <= 0) {
+            throw new IllegalArgumentException("nine-slice inset " + inset
+                    + " leaves no center in region " + rw + "x" + rh);
+        }
+        RenderSystem.enableBlend();
         int dw = w - 2 * inset,  dh = h - 2 * inset;   // destination center size
         // corners
         g.blit(tex, x, y, inset, inset, u, v, inset, inset, texW, texH);
