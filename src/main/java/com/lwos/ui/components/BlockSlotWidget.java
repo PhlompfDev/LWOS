@@ -1,5 +1,6 @@
 package com.lwos.ui.components;
 
+import com.lwos.ui.theme.JournalTheme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.item.ItemStack;
 
@@ -11,9 +12,6 @@ import net.minecraft.world.item.ItemStack;
 public final class BlockSlotWidget {
 
     public static final int SIZE = 30;
-    private static final int BG        = 0x22FFFFFF;
-    private static final int BORDER    = 0x33FFFFFF;
-    private static final int ACTIVE    = 0xFF7CD3FF;
 
     private final int x, y;
 
@@ -27,13 +25,15 @@ public final class BlockSlotWidget {
     }
 
     public void render(GuiGraphics g, ItemStack icon, boolean active) {
-        g.fill(x, y, x + SIZE, y + SIZE, BG);
-        int border = active ? ACTIVE : BORDER;
-        // 1px frame
-        g.fill(x, y, x + SIZE, y + 1, border);
-        g.fill(x, y + SIZE - 1, x + SIZE, y + SIZE, border);
-        g.fill(x, y, x + 1, y + SIZE, border);
-        g.fill(x + SIZE - 1, y, x + SIZE, y + SIZE, border);
+        JournalTheme.blitWidgetNineSlice(g, JournalTheme.SLOT_U, JournalTheme.SLOT_V,
+                JournalTheme.SLOT_W, JournalTheme.SLOT_H, JournalTheme.SLOT_INSET, x, y, SIZE, SIZE);
+        if (active) {
+            // wax selection ring just inside the ink frame
+            g.fill(x + 1, y + 1, x + SIZE - 1, y + 2, JournalTheme.WAX);
+            g.fill(x + 1, y + SIZE - 2, x + SIZE - 1, y + SIZE - 1, JournalTheme.WAX);
+            g.fill(x + 1, y + 1, x + 2, y + SIZE - 1, JournalTheme.WAX);
+            g.fill(x + SIZE - 2, y + 1, x + SIZE - 1, y + SIZE - 1, JournalTheme.WAX);
+        }
         if (icon != null && !icon.isEmpty()) {
             g.renderItem(icon, x + 7, y + 7); // 16x16 item centered in the 30px slot
         }

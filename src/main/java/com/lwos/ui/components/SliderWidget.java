@@ -1,17 +1,15 @@
 package com.lwos.ui.components;
 
+import com.lwos.ui.theme.JournalTheme;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
  * A custom-rendered slider for the frosted-glass panel: a thin track, an accent fill, and a round
  * knob — no vanilla button textures. Value↔pixel mapping is pure and unit-tested; rendering is
- * verified in the panel playtest. Colors are ARGB ints ({@code 0xAARRGGBB}).
+ * verified in the panel playtest. Colors and textures are drawn through the journal theme.
  */
 public final class SliderWidget {
 
-    private static final int TRACK_BG   = 0x33FFFFFF;
-    private static final int FILL       = 0xFF7CD3FF; // cool blue accent
-    private static final int KNOB       = 0xFFEAF7FF;
     private static final int TRACK_H    = 6;
 
     private final int x, y, width;
@@ -49,8 +47,13 @@ public final class SliderWidget {
 
     public void render(GuiGraphics g, int mouseX, int mouseY) {
         int knobX = pixelFromValue(value, x, width, min, max);
-        g.fill(x, y, x + width, y + TRACK_H, TRACK_BG);
-        g.fill(x, y, knobX, y + TRACK_H, FILL);
-        g.fill(knobX - 5, y - 2, knobX + 5, y + TRACK_H + 2, KNOB);
+        // 8px groove art drawn 1px above the 6px logical track; hitbox (y-4 .. y+TRACK_H+4) unchanged.
+        JournalTheme.blitH3(g, JournalTheme.TRACK_U, JournalTheme.TRACK_V, JournalTheme.TRACK_W,
+                JournalTheme.TRACK_TEX_H, JournalTheme.TRACK_CAP, x, y - 1, width, 8);
+        if (knobX > x + 1) {
+            g.fill(x + 1, y, knobX, y + TRACK_H, JournalTheme.INK_FILL); // ink wash up to the knob
+        }
+        JournalTheme.blitRegion(g, JournalTheme.KNOB_U, JournalTheme.KNOB_V, JournalTheme.KNOB_W,
+                JournalTheme.KNOB_H, knobX - 4, y - 3);
     }
 }
