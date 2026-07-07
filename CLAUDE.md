@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 LWOS Builder Tools — a Minecraft Forge 1.20.1 (Forge 47.4.10, official mappings, mod id `lwos`) client+server mod providing interactive path-building tools with live preview.
 
+> **Knowledge vault**: a distilled overview of this project (architecture, invariants, status, roadmap) lives at `C:\Users\monst\Desktop\All\AI\Brain\wiki\projects\minecraft\lwos-builder-tools\` (hub: `lwos-builder-tools.md`; per-system subpages for rendering, networking, UI, known problems, future ideas). Read it for fast orientation. If you learn something durable that isn't there, file it into the vault yourself automatically (following `Brain\CLAUDE.md`'s schema — living sections + log entry); don't ask or offer first.
+
 ## Build & test
 
 Gradle must run on **JDK 17** (ForgeGradle rejects newer JDKs; the machine default is newer). `gradle.properties` pins `org.gradle.java.home` to `C:/Program Files/Java/jdk-17`, but when running from Git Bash also export it before every command as belt-and-braces:
