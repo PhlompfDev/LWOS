@@ -5,6 +5,7 @@ import com.lwos.config.StyleManager;
 import com.lwos.tool.ToolManager;
 import com.lwos.ui.components.BlockSlotWidget;
 import com.lwos.ui.components.SliderWidget;
+import com.lwos.ui.theme.JournalTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -20,20 +21,15 @@ import java.util.List;
 
 /**
  * Docked, right-hand "Path Style" panel drawn as a Forge HUD overlay (not a Screen) so the world
- * stays interactive behind it. Frosted-glass look: translucent dark fill, hairline dividers, blue
- * accent. Read-only by default; {@link PathStylePanelInput} frees the cursor on Left-Ctrl and drives
- * the widget rectangles this class republishes each frame via {@link #currentLayout()}.
+ * stays interactive behind it. Journal look: parchment nine-slice background, ink-colored text,
+ * wax-red accent. Read-only by default; {@link PathStylePanelInput} frees the cursor on Left-Ctrl
+ * and drives the widget rectangles this class republishes each frame via {@link #currentLayout()}.
  */
 public final class PathStylePanel implements IGuiOverlay {
     public static final PathStylePanel INSTANCE = new PathStylePanel();
 
     private static final int PANEL_W = 210;
     private static final int PAD = 10;
-    private static final int PANEL_BG   = 0xB0121419; // ~69% alpha dark
-    private static final int DIVIDER    = 0x1AFFFFFF;
-    private static final int ACCENT     = 0xFF7CD3FF;
-    private static final int TEXT       = 0xFFE7EAF0;
-    private static final int LABEL      = 0xFFAAB2C0;
 
     /** Widget rectangles for this frame, consumed by the input handler for hit-testing. */
     public record SlotRect(boolean core, int index, int x, int y) { }
@@ -57,7 +53,9 @@ public final class PathStylePanel implements IGuiOverlay {
         int x = screenWidth - PANEL_W - 8;
         int top = 30;
         int bottom = screenHeight - 30;
-        g.fill(x, top, x + PANEL_W, bottom, PANEL_BG);
+        JournalTheme.blitNineSlice(g, JournalTheme.PANEL, JournalTheme.PANEL_TEX, JournalTheme.PANEL_TEX,
+                0, 0, JournalTheme.PANEL_TEX, JournalTheme.PANEL_TEX, JournalTheme.PANEL_INSET,
+                x, top, PANEL_W, bottom - top);
 
         int scroll = PathStylePanelState.scrollOffset();
         // Reserve a fixed footer strip that never scrolls.
@@ -77,15 +75,17 @@ public final class PathStylePanel implements IGuiOverlay {
         for (String name : presets) {
             int w = font.width(name) + 10;
             if (chipX + w > x + PANEL_W - 40) break; // keep the Save chip room
-            g.fill(chipX, y, chipX + w, y + 14, 0x22FFFFFF);
-            g.drawString(font, name, chipX + 5, y + 3, TEXT, false);
+            JournalTheme.blitWidgetNineSlice(g, JournalTheme.CHIP_U, JournalTheme.CHIP_V,
+                    JournalTheme.CHIP_W, JournalTheme.CHIP_H, JournalTheme.CHIP_INSET, chipX, y, w, 14);
+            g.drawString(font, name, chipX + 5, y + 3, JournalTheme.INK, false);
             chips.add(new ChipRect(name, false, chipX, y, w, 14));
             chipX += w + 4;
         }
         int saveW = font.width("+ Save") + 8;
         int saveX = x + PANEL_W - PAD - saveW;
-        g.fill(saveX, y, saveX + saveW, y + 14, 0x2A7CD3FF);
-        g.drawString(font, "+ Save", saveX + 4, y + 3, ACCENT, false);
+        JournalTheme.blitWidgetNineSlice(g, JournalTheme.CHIP_SEL_U, JournalTheme.CHIP_SEL_V,
+                JournalTheme.CHIP_W, JournalTheme.CHIP_H, JournalTheme.CHIP_INSET, saveX, y, saveW, 14);
+        g.drawString(font, "+ Save", saveX + 4, y + 3, JournalTheme.WAX, false);
         chips.add(new ChipRect(null, true, saveX, y, saveW, 14));
         y += 24;
 
@@ -128,16 +128,28 @@ public final class PathStylePanel implements IGuiOverlay {
         int visibleHeight = bodyBottom - contentTop;
         PathStylePanelState.setMaxScroll(Math.max(0, contentHeight - visibleHeight));
 
+        // Leather scrollbar strap along the right edge, only when the body overflows.
+        int maxScroll = PathStylePanelState.maxScroll();
+        if (maxScroll > 0) {
+            int trackTop = contentTop;
+            int trackH = bodyBottom - contentTop;
+            int thumbH = Math.max(20, trackH * visibleHeight / (visibleHeight + maxScroll));
+            int thumbY = trackTop + (trackH - thumbH) * PathStylePanelState.scrollOffset() / maxScroll;
+            JournalTheme.blitV3(g, JournalTheme.STRAP_U, JournalTheme.STRAP_V, JournalTheme.STRAP_W,
+                    JournalTheme.STRAP_H, JournalTheme.STRAP_CAP, x + PANEL_W - 5, thumbY, 4, thumbH);
+        }
+
         // Footer hint
         g.drawString(font, "Hold Ctrl to edit · Look + P to pick",
-                cx, bottom - 12, LABEL, false);
+                cx, bottom - 12, JournalTheme.INK_FADED, false);
 
         currentLayout = new Layout(List.copyOf(slots), List.copyOf(sliders), List.copyOf(chips));
     }
 
     private int section(GuiGraphics g, Font font, int x, int y, int right, String label) {
-        g.fill(x, y, right, y + 1, DIVIDER);
-        g.drawString(font, label, x, y + 5, LABEL, false);
+        JournalTheme.blitTiledH(g, JournalTheme.STITCH_U, JournalTheme.STITCH_V,
+                JournalTheme.STITCH_W, JournalTheme.STITCH_H, x, y, right - x);
+        g.drawString(font, label, x, y + 5, JournalTheme.INK_FADED, false);
         return y + 18;
     }
 
@@ -159,8 +171,8 @@ public final class PathStylePanel implements IGuiOverlay {
 
     private int labeledSlider(GuiGraphics g, Font font, int x, int y, int w, String label, double value,
                               String target, int index, double min, double max, List<SliderRect> sliders) {
-        g.drawString(font, label, x, y, LABEL, false);
-        g.drawString(font, String.format("%.2f", value), x + w - 28, y, ACCENT, false);
+        g.drawString(font, label, x, y, JournalTheme.INK_FADED, false);
+        g.drawString(font, String.format("%.2f", value), x + w - 28, y, JournalTheme.WAX, false);
         int sy = y + 11;
         new SliderWidget(x, sy, w, min, max, value).render(g, 0, 0);
         sliders.add(new SliderRect(target, index, x, sy, w, min, max));
@@ -168,8 +180,10 @@ public final class PathStylePanel implements IGuiOverlay {
     }
 
     private void drawAddSlot(GuiGraphics g, int x, int y) {
-        g.fill(x, y, x + BlockSlotWidget.SIZE, y + BlockSlotWidget.SIZE, 0x14FFFFFF);
-        g.drawString(Minecraft.getInstance().font, "+", x + 12, y + 10, LABEL, false);
+        JournalTheme.blitWidgetNineSlice(g, JournalTheme.SLOT_U, JournalTheme.SLOT_V,
+                JournalTheme.SLOT_W, JournalTheme.SLOT_H, JournalTheme.SLOT_INSET,
+                x, y, BlockSlotWidget.SIZE, BlockSlotWidget.SIZE);
+        g.drawString(Minecraft.getInstance().font, "+", x + 12, y + 10, JournalTheme.INK_FADED, false);
     }
 
     private ItemStack iconFor(String id) {
