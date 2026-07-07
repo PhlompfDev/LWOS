@@ -2,6 +2,7 @@ package com.lwos.client;
 
 import com.lwos.plan.TerrainMode;
 import com.lwos.tool.ToolManager;
+import com.lwos.ui.theme.JournalTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -18,8 +19,6 @@ public final class ModeHudOverlay implements IGuiOverlay {
 
     private static final int MARGIN = 6;
     private static final int PAD = 4;
-    private static final int TEXT_COLOR = 0xFFFFFFFF;
-    private static final int BG_COLOR = 0x90000000;
 
     private ModeHudOverlay() { }
 
@@ -36,7 +35,9 @@ public final class ModeHudOverlay implements IGuiOverlay {
         int x = MARGIN;
         int y = MARGIN;
         int w = font.width(text);
-        g.fill(x - PAD, y - PAD, x + w + PAD, y + font.lineHeight + PAD, BG_COLOR);
-        g.drawString(font, text, x, y, TEXT_COLOR);
+        JournalTheme.blitNineSlice(g, JournalTheme.HUD_PLATE, JournalTheme.HUD_TEX_W, JournalTheme.HUD_TEX_H,
+                0, 0, JournalTheme.HUD_TEX_W, JournalTheme.HUD_TEX_H, JournalTheme.HUD_INSET,
+                x - PAD, y - PAD, w + 2 * PAD, font.lineHeight + 2 * PAD);
+        g.drawString(font, text, x, y, JournalTheme.INK, false);
     }
 }
