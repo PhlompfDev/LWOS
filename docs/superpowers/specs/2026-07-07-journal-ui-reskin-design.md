@@ -77,7 +77,7 @@ below are load-bearing.
 | Slider knob (brass) | (0,8) 8×12 | fixed |
 | Chip / paper tag, normal | (32,0) 24×16 | nine-slice, 5px insets |
 | Chip, selected (wax edge) | (32,16) 24×16 | nine-slice, 5px insets |
-| Block slot frame | (64,0) 20×20 | fixed |
+| Block slot frame | (64,0) 20×20 | nine-slice, 6px insets (panel slots are 30×30, search-grid cells 18×18 — one frame serves both) |
 | Stitch divider | (0,48) 64×4 | horizontally tiled |
 | Scrollbar strap (leather) | (88,0) 6×24 | vertical 3-slice, 6px end caps |
 | Small button | (96,0) 16×16 | nine-slice, 5px insets |
