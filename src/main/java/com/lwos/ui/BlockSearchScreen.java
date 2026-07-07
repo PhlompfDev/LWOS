@@ -1,5 +1,6 @@
 package com.lwos.ui;
 
+import com.lwos.ui.theme.JournalTheme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -38,7 +39,10 @@ public final class BlockSearchScreen extends Screen {
     @Override
     protected void init() {
         int gridX = width / 2 - (COLS * CELL) / 2;
-        search = new EditBox(font, gridX, height / 2 - 90, COLS * CELL, 18, Component.literal("search"));
+        // Unbordered: the journal search-field frame is drawn behind it in render().
+        search = new EditBox(font, gridX + 5, height / 2 - 85, COLS * CELL - 10, 10, Component.literal("search"));
+        search.setBordered(false);
+        search.setTextColor(0x3B2E1E);
         search.setHint(Component.literal("search blocks..."));
         search.setResponder(s -> refilter());
         addRenderableWidget(search);
@@ -61,19 +65,36 @@ public final class BlockSearchScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
         renderBackground(g);
-        super.render(g, mouseX, mouseY, partial);
         int gridX = width / 2 - (COLS * CELL) / 2;
         int gridY = height / 2 - 66;
         int rows = 8;
+        // Parchment sheet behind everything: search field, grid, hint line.
+        JournalTheme.blitNineSlice(g, JournalTheme.PANEL, JournalTheme.PANEL_TEX, JournalTheme.PANEL_TEX,
+                0, 0, JournalTheme.PANEL_TEX, JournalTheme.PANEL_TEX, JournalTheme.PANEL_INSET,
+                gridX - 12, height / 2 - 102, COLS * CELL + 24, 12 + 36 + rows * CELL + 26);
+        // Ink-ruled search field frame (the EditBox itself is unbordered).
+        JournalTheme.blitWidgetNineSlice(g, JournalTheme.FIELD_U, JournalTheme.FIELD_V,
+                JournalTheme.FIELD_W, JournalTheme.FIELD_H, JournalTheme.FIELD_INSET,
+                gridX, height / 2 - 90, COLS * CELL, 18);
+        super.render(g, mouseX, mouseY, partial);
         for (int i = 0; i < rows * COLS && (i + scroll * COLS) < filtered.size(); i++) {
             Block b = filtered.get(i + scroll * COLS);
             int cx = gridX + (i % COLS) * CELL;
             int cy = gridY + (i / COLS) * CELL;
-            g.fill(cx, cy, cx + CELL - 2, cy + CELL - 2, 0x22FFFFFF);
+            JournalTheme.blitWidgetNineSlice(g, JournalTheme.SLOT_U, JournalTheme.SLOT_V,
+                    JournalTheme.SLOT_W, JournalTheme.SLOT_H, JournalTheme.SLOT_INSET,
+                    cx, cy, CELL - 2, CELL - 2);
+            boolean hover = mouseX >= cx && mouseX <= cx + CELL - 2 && mouseY >= cy && mouseY <= cy + CELL - 2;
+            if (hover) {
+                g.fill(cx, cy, cx + CELL - 2, cy + 1, JournalTheme.WAX);
+                g.fill(cx, cy + CELL - 3, cx + CELL - 2, cy + CELL - 2, JournalTheme.WAX);
+                g.fill(cx, cy, cx + 1, cy + CELL - 2, JournalTheme.WAX);
+                g.fill(cx + CELL - 3, cy, cx + CELL - 2, cy + CELL - 2, JournalTheme.WAX);
+            }
             g.renderItem(new ItemStack(b), cx + 2, cy + 2);
         }
         g.drawString(font, "Scroll to page · click to select · Esc to cancel",
-                gridX, gridY + rows * CELL + 4, 0xFFAAB2C0, false);
+                gridX, gridY + rows * CELL + 4, JournalTheme.INK_FADED, false);
     }
 
     @Override
