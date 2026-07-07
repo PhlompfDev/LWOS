@@ -2,7 +2,9 @@ package com.lwos.client;
 
 import com.lwos.tool.ToolManager;
 import com.lwos.tool.ToolType;
+import com.lwos.ui.theme.JournalTheme;
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -33,8 +35,11 @@ public final class ToolWheelOverlay implements IGuiOverlay {
         int cx = screenWidth / 2;
         int cy = screenHeight / 2;
 
-        // Dim the screen slightly behind the wheel.
-        g.fill(cx - RADIUS - 40, cy - RADIUS - 20, cx + RADIUS + 40, cy + RADIUS + 20, 0x80000000);
+        // Soft dim behind the wheel, then the parchment compass disc (128x128, 1:1).
+        g.fill(cx - RADIUS - 40, cy - RADIUS - 20, cx + RADIUS + 40, cy + RADIUS + 20, 0x66000000);
+        RenderSystem.enableBlend();
+        g.blit(JournalTheme.TOOL_WHEEL, cx - 64, cy - 64, 128, 128, 0.0F, 0.0F, 128, 128, 128, 128);
+        RenderSystem.disableBlend();
 
         ToolType[] tools = ToolType.values();
         int n = tools.length;
@@ -43,10 +48,11 @@ public final class ToolWheelOverlay implements IGuiOverlay {
             int x = cx + (int) Math.round(Math.cos(angle) * RADIUS);
             int y = cy + (int) Math.round(Math.sin(angle) * RADIUS);
             boolean sel = tools[i] == tm.selected();
-            int color = sel ? 0xFF00FF00 : (0xFF000000 | tools[i].color());
+            int color = sel ? JournalTheme.WAX : JournalTheme.INK;
             String label = (sel ? "> " : "") + tools[i].displayName() + (sel ? " <" : "");
-            g.drawCenteredString(font, label, x, y - font.lineHeight / 2, color);
+            g.drawString(font, label, x - font.width(label) / 2, y - font.lineHeight / 2, color, false);
         }
-        g.drawCenteredString(font, "Scroll to change tool", cx, cy - 4, 0xFFFFFFFF);
+        String hint = "Scroll to change tool";
+        g.drawString(font, hint, cx - font.width(hint) / 2, cy - 4, JournalTheme.INK_FADED, false);
     }
 }
