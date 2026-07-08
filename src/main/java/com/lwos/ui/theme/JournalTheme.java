@@ -37,6 +37,8 @@ public final class JournalTheme {
     public static final int FIELD_U = 0,   FIELD_V = 32, FIELD_W = 48, FIELD_H = 16, FIELD_INSET = 5;
     public static final int STITCH_U = 0,  STITCH_V = 48, STITCH_W = 64, STITCH_H = 4;
     public static final int STRAP_U = 88,  STRAP_V = 0,  STRAP_W = 6,  STRAP_H = 24, STRAP_CAP = 6;
+    public static final int TOOL_ICON_U = 0, TOOL_ICON_V = 64, TOOL_ICON_SIZE = 16;
+    public static final int SEL_RING_U = 80,  SEL_RING_V = 64, SEL_RING_SIZE = 24;
 
     // Standalone sheets.
     public static final int PANEL_TEX = 48,  PANEL_INSET = 12;

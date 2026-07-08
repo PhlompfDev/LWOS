@@ -15,7 +15,7 @@ import org.lwjgl.glfw.GLFW;
 public final class ToolWheelOverlay implements IGuiOverlay {
     public static final ToolWheelOverlay INSTANCE = new ToolWheelOverlay();
 
-    private static final int RADIUS = 60;
+    private static final int ICON_RADIUS = 40;
 
     private ToolWheelOverlay() { }
 
@@ -35,8 +35,7 @@ public final class ToolWheelOverlay implements IGuiOverlay {
         int cx = screenWidth / 2;
         int cy = screenHeight / 2;
 
-        // Soft dim behind the wheel, then the parchment compass disc (128x128, 1:1).
-        g.fill(cx - RADIUS - 40, cy - RADIUS - 20, cx + RADIUS + 40, cy + RADIUS + 20, 0x66000000);
+        // Parchment compass disc (128x128, 1:1) — no dim box; the disc carries its own contrast.
         RenderSystem.enableBlend();
         g.blit(JournalTheme.TOOL_WHEEL, cx - 64, cy - 64, 128, 128, 0.0F, 0.0F, 128, 128, 128, 128);
         RenderSystem.disableBlend();
@@ -45,14 +44,17 @@ public final class ToolWheelOverlay implements IGuiOverlay {
         int n = tools.length;
         for (int i = 0; i < n; i++) {
             double angle = (2 * Math.PI * i / n) - Math.PI / 2; // first tool at top
-            int x = cx + (int) Math.round(Math.cos(angle) * RADIUS);
-            int y = cy + (int) Math.round(Math.sin(angle) * RADIUS);
-            boolean sel = tools[i] == tm.selected();
-            int color = sel ? JournalTheme.WAX : JournalTheme.INK;
-            String label = (sel ? "> " : "") + tools[i].displayName() + (sel ? " <" : "");
-            g.drawString(font, label, x - font.width(label) / 2, y - font.lineHeight / 2, color, false);
+            int x = cx + (int) Math.round(Math.cos(angle) * ICON_RADIUS);
+            int y = cy + (int) Math.round(Math.sin(angle) * ICON_RADIUS);
+            if (tools[i] == tm.selected()) {
+                JournalTheme.blitRegion(g, JournalTheme.SEL_RING_U, JournalTheme.SEL_RING_V,
+                        JournalTheme.SEL_RING_SIZE, JournalTheme.SEL_RING_SIZE, x - 12, y - 12);
+            }
+            JournalTheme.blitRegion(g, JournalTheme.TOOL_ICON_U + i * JournalTheme.TOOL_ICON_SIZE,
+                    JournalTheme.TOOL_ICON_V, JournalTheme.TOOL_ICON_SIZE, JournalTheme.TOOL_ICON_SIZE,
+                    x - 8, y - 8);
         }
-        String hint = "Scroll to change tool";
-        g.drawString(font, hint, cx - font.width(hint) / 2, cy - 4, JournalTheme.INK_FADED, false);
+        String name = tm.selected().displayName();
+        g.drawString(font, name, cx - font.width(name) / 2, cy + 6, JournalTheme.WAX, false);
     }
 }
