@@ -13,7 +13,13 @@ class EditPlanBuilderEdgeScatterTest {
 
     /** Flat world at y=64 everywhere. */
     private static WorldView flat() {
-        return (x, z) -> 64;
+        return new WorldView() {
+            @Override
+            public int surfaceHeight(int x, int z) { return 64; }
+
+            @Override
+            public String surfaceBlockId(int x, int z) { return "minecraft:grass_block"; }
+        };
     }
 
     private static final List<Vec3d> STRAIGHT = List.of(new Vec3d(0, 64, 0), new Vec3d(20, 64, 0));

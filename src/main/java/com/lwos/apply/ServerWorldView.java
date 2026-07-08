@@ -21,4 +21,14 @@ public final class ServerWorldView implements WorldView {
     public int surfaceHeight(int x, int z) {
         return SurfaceScan.solidSurfaceHeight(level, x, z);
     }
+
+    @Override
+    public int groundHeight(int x, int z) {
+        return SurfaceScan.groundHeight(level, x, z);
+    }
+
+    @Override
+    public String surfaceBlockId(int x, int z) {
+        return SurfaceScan.surfaceBlockId(level, x, z);
+    }
 }

@@ -20,4 +20,18 @@ public final class ForgeWorldView implements WorldView {
         // then walks down through the canopy to real ground.
         return SurfaceScan.solidSurfaceHeight(level, x, z);
     }
+
+    @Override
+    public int groundHeight(int x, int z) {
+        Level level = Minecraft.getInstance().level;
+        if (level == null) return 64;
+        return SurfaceScan.groundHeight(level, x, z);
+    }
+
+    @Override
+    public String surfaceBlockId(int x, int z) {
+        Level level = Minecraft.getInstance().level;
+        if (level == null) return "minecraft:air";
+        return SurfaceScan.surfaceBlockId(level, x, z);
+    }
 }

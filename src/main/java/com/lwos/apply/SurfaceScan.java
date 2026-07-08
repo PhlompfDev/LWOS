@@ -1,10 +1,13 @@
 package com.lwos.apply;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraftforge.registries.ForgeRegistries;
 
 /**
  * Shared, deterministic ground-finder for both the client ({@code ForgeWorldView}) and server
@@ -29,5 +32,32 @@ public final class SurfaceScan {
             pos.setY(y);
         }
         return y;
+    }
+
+    /**
+     * Y of the topmost block that counts as ground (spec §4): scans down from MOTION_BLOCKING,
+     * skipping leaves, logs, snow layers, and anything that doesn't block motion (saplings,
+     * flowers, grass/ferns, small mushrooms, vines are all non-motion-blocking). Shared by both
+     * world views so client preview and server apply answer identically (preview==apply).
+     */
+    public static int groundHeight(LevelReader level, int x, int z) {
+        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) - 1;
+        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(x, y, z);
+        while (y > level.getMinBuildHeight()) {
+            BlockState state = level.getBlockState(pos);
+            if (!state.is(BlockTags.LEAVES) && !state.is(BlockTags.LOGS)
+                    && !state.is(Blocks.SNOW) && state.blocksMotion()) break;
+            y--;
+            pos.setY(y);
+        }
+        return y;
+    }
+
+    /** Registry id string of the topmost solid surface block at the column (spec §3). */
+    public static String surfaceBlockId(LevelReader level, int x, int z) {
+        int y = solidSurfaceHeight(level, x, z);
+        BlockState state = level.getBlockState(new BlockPos(x, y, z));
+        ResourceLocation id = ForgeRegistries.BLOCKS.getKey(state.getBlock());
+        return id == null ? "minecraft:air" : id.toString();
     }
 }

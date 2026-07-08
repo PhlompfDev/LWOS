@@ -13,6 +13,9 @@ class TerrainSamplerTest {
         public int surfaceHeight(int x, int z) {
             return 64 + Math.floorDiv(x, 2);
         }
+
+        @Override
+        public String surfaceBlockId(int x, int z) { return "minecraft:grass_block"; }
     }
 
     @Test

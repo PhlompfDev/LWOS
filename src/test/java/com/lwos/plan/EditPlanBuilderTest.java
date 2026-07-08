@@ -17,18 +17,27 @@ class EditPlanBuilderTest {
     private static final class FlatWorldView implements WorldView {
         @Override
         public int surfaceHeight(int x, int z) { return 70; }
+
+        @Override
+        public String surfaceBlockId(int x, int z) { return "minecraft:grass_block"; }
     }
 
     /** Surface rises gently with x (1 block every 4) — non-flat but too shallow to trigger stairs. */
     private static final class SlopedWorldView implements WorldView {
         @Override
         public int surfaceHeight(int x, int z) { return 70 + Math.floorDiv(x, 4); }
+
+        @Override
+        public String surfaceBlockId(int x, int z) { return "minecraft:grass_block"; }
     }
 
     /** A flat surface at a fixed height, for isolating cut vs. fill behavior against a level path. */
     private record LevelWorldView(int height) implements WorldView {
         @Override
         public int surfaceHeight(int x, int z) { return height; }
+
+        @Override
+        public String surfaceBlockId(int x, int z) { return "minecraft:grass_block"; }
     }
 
     @Test
