@@ -75,7 +75,7 @@ class ToolSessionTest {
         tm.cycle(-1);
         assertEquals(ToolType.PATH, tm.selected());
         tm.cycle(-1);
-        assertEquals(ToolType.TERRAIN_BLEND, tm.selected()); // wrap backwards
+        assertEquals(ToolType.TERRAIN, tm.selected()); // wrap backwards
     }
 
     @Test

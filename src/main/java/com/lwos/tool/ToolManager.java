@@ -13,6 +13,7 @@ public class ToolManager {
     private boolean enabled = false;
     private ToolType selected = ToolType.PATH;
     private final PathTool pathTool = new PathTool();
+    private final TerrainBrushTool brushTool = new TerrainBrushTool();
 
     private ToolManager() { }
 
@@ -34,4 +35,8 @@ public class ToolManager {
     public boolean isPathToolActive() { return enabled && selected == ToolType.PATH; }
 
     public PathTool currentPath() { return pathTool; }
+
+    public boolean isTerrainToolActive() { return enabled && selected == ToolType.TERRAIN; }
+
+    public TerrainBrushTool currentBrush() { return brushTool; }
 }

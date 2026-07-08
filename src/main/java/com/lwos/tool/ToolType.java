@@ -6,7 +6,7 @@ public enum ToolType {
     LINE("Line", 0x2196F3),
     CIRCLE("Circle", 0xFFC107),
     FILL("Fill", 0x9C27B0),
-    TERRAIN_BLEND("Terrain Blend", 0x795548);
+    TERRAIN("Terrain", 0x795548);
 
     private final String displayName;
     private final int color;
