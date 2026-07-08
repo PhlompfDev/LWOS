@@ -13,19 +13,20 @@ public final class PreviewPlanCache {
 
     public static final long MIN_REBUILD_INTERVAL_MS = 75;
 
+    /** Path-preview key (PathRenderer). Other tools may key with any equals-comparable record. */
     public record Key(long styleVersion, long pathRevision, double width, int modeOrdinal) { }
 
-    private Key acceptedKey = null;
+    private Object acceptedKey = null;
     private EditPlan last = null;
     private long lastRebuildMillis = Long.MIN_VALUE;
 
-    public boolean needsRebuild(Key key, long nowMillis) {
+    public boolean needsRebuild(Object key, long nowMillis) {
         if (last == null || acceptedKey == null) return true;
         if (key.equals(acceptedKey)) return false;
         return nowMillis - lastRebuildMillis >= MIN_REBUILD_INTERVAL_MS;
     }
 
-    public void accept(Key key, EditPlan plan, long nowMillis) {
+    public void accept(Object key, EditPlan plan, long nowMillis) {
         this.acceptedKey = key;
         this.last = plan;
         this.lastRebuildMillis = nowMillis;

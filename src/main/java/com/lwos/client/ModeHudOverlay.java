@@ -26,12 +26,20 @@ public final class ModeHudOverlay implements IGuiOverlay {
     public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();
         ToolManager tm = ToolManager.get();
-        if (mc.screen != null || !tm.isPathToolActive()) return;
+        if (mc.screen != null) return;
+
+        String text;
+        if (tm.isTerrainToolActive()) {
+            // Brush readout (spec §1): e.g. "Smooth · r6".
+            com.lwos.tool.TerrainBrushTool brush = tm.currentBrush();
+            text = brush.op().displayName() + " · r" + brush.radius();
+        } else if (tm.isPathToolActive()) {
+            text = "Mode: " + tm.currentPath().terrainMode().displayName();
+        } else {
+            return;
+        }
 
         Font font = mc.font;
-        TerrainMode mode = tm.currentPath().terrainMode();
-        String text = "Mode: " + mode.displayName();
-
         int x = MARGIN;
         int y = MARGIN;
         int w = font.width(text);
