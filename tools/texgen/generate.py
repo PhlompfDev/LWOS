@@ -259,6 +259,48 @@ def gen_widgets(rng):
             bd.point((rx, ry), fill=BRASS + (255,))
         img.paste(btn, (bx, by), btn)
 
+    # --- tool icons (0,64)..(80,80), 16x16 each, ToolType.ordinal() order ---
+    # PATH (0,64): wavy dotted trail
+    ox, oy = 0, 64
+    for i in range(0, 14, 3):
+        yy = 8 + round(3 * math.sin(i * 0.9))
+        d.line([(ox + 1 + i, oy + yy), (ox + 2 + i, oy + yy)], fill=INK + (255,))
+
+    # LINE (16,64): straight diagonal rule with perpendicular end ticks
+    ox, oy = 16, 64
+    d.line([(ox + 2, oy + 13), (ox + 13, oy + 2)], fill=INK + (255,))
+    d.line([(ox + 1, oy + 11), (ox + 4, oy + 14)], fill=INK + (220,))
+    d.line([(ox + 11, oy + 1), (ox + 14, oy + 4)], fill=INK + (220,))
+
+    # CIRCLE (32,64): compass circle with center prick
+    ox, oy = 32, 64
+    d.ellipse([ox + 2, oy + 2, ox + 13, oy + 13], outline=INK + (255,))
+    d.point((ox + 8, oy + 8), fill=INK + (255,))
+
+    # FILL (48,64): bucket with pour stream and drop
+    ox, oy = 48, 64
+    d.polygon([(ox + 3, oy + 5), (ox + 10, oy + 5), (ox + 9, oy + 12), (ox + 4, oy + 12)],
+              outline=INK + (255,))
+    d.arc([ox + 3, oy + 1, ox + 10, oy + 8], 180, 360, fill=INK + (220,))
+    d.line([(ox + 11, oy + 6), (ox + 12, oy + 9)], fill=INK + (255,))
+    d.point((ox + 12, oy + 12), fill=INK + (255,))
+
+    # TERRAIN_BLEND (64,64): two overlapping hills, ground line, blend hatching
+    ox, oy = 64, 64
+    d.arc([ox + 1, oy + 6, ox + 9, oy + 18], 180, 360, fill=INK + (255,))
+    d.arc([ox + 6, oy + 8, ox + 14, oy + 20], 180, 360, fill=INK + (255,))
+    d.line([(ox + 1, oy + 12), (ox + 14, oy + 12)], fill=INK + (150,))
+    for hx in (4, 7, 10):
+        d.line([(ox + hx, oy + 9), (ox + hx + 2, oy + 11)], fill=INK + (140,))
+
+    # --- wax scribble ring (80,64) 24x24: hand-wobbled 1.5-turn circling ---
+    rcx, rcy = 80 + 11.5, 64 + 11.5
+    for i in range(540):
+        ang = math.pi * i / 180.0
+        rr = 9.0 + (rng.random() - 0.5) * 1.8 + (i / 540.0) * 0.8
+        d.point((round(rcx + rr * math.cos(ang)), round(rcy + rr * math.sin(ang))),
+                fill=WAX + (230,))
+
     return img
 
 
