@@ -130,6 +130,9 @@ public final class PathStylePanelInput {
     @SubscribeEvent
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
         if (!PathStylePanelState.isEditing()) return;
+        // The terrain brush's Ctrl+scroll owns the wheel while the cursor is off-panel (spec §1
+        // precedence rule); path-tool behavior (panel scrolls from anywhere while editing) is kept.
+        if (ToolManager.get().isTerrainToolActive() && !PathStylePanel.cursorOverPanel()) return;
         double delta = event.getScrollDelta();
         if (delta == 0) return;
         // Wheel up (delta > 0) reveals content above -> smaller offset.

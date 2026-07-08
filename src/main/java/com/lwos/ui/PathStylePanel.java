@@ -43,6 +43,13 @@ public final class PathStylePanel implements IGuiOverlay {
 
     public static Layout currentLayout() { return currentLayout; }
 
+    /** True when the gui-scaled cursor is horizontally within the docked panel strip (right edge). */
+    public static boolean cursorOverPanel() {
+        Minecraft mc = Minecraft.getInstance();
+        double mx = mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / mc.getWindow().getScreenWidth();
+        return mx >= mc.getWindow().getGuiScaledWidth() - PANEL_W - 8;
+    }
+
     @Override
     public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();

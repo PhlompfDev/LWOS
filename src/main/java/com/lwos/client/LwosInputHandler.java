@@ -47,6 +47,12 @@ public final class LwosInputHandler {
                 || InputConstants.isKeyDown(win, GLFW.GLFW_KEY_RIGHT_ALT);
     }
 
+    private static boolean ctrlHeld() {
+        long win = Minecraft.getInstance().getWindow().getWindow();
+        return InputConstants.isKeyDown(win, GLFW.GLFW_KEY_LEFT_CONTROL)
+                || InputConstants.isKeyDown(win, GLFW.GLFW_KEY_RIGHT_CONTROL);
+    }
+
     @SubscribeEvent
     public static void onKey(InputEvent.Key event) {
         if (!inWorld() || !isModUser()) return;
@@ -56,9 +62,11 @@ public final class LwosInputHandler {
         while (LwosKeyMappings.TOGGLE_STYLE_PANEL.consumeClick()) com.lwos.ui.PathStylePanelState.toggleOpen();
         while (LwosKeyMappings.UNDO.consumeClick()) {
             LwosMod.CHANNEL.sendToServer(new com.lwos.apply.net.UndoRequestPacket());
+            tm.currentBrush().bumpRevision(); // ground may change under the brush preview
         }
         while (LwosKeyMappings.REDO.consumeClick()) {
             LwosMod.CHANNEL.sendToServer(new com.lwos.apply.net.RedoRequestPacket());
+            tm.currentBrush().bumpRevision();
         }
         while (LwosKeyMappings.PICK_BLOCK.consumeClick()) pickBlockFromWorld();
         while (LwosKeyMappings.DELETE_POINT.consumeClick()) tm.currentPath().deleteLast();
@@ -70,7 +78,11 @@ public final class LwosInputHandler {
         while (LwosKeyMappings.WIDTH_DOWN.consumeClick()) {
             tm.currentPath().setWidth(tm.currentPath().width() - 1.0);
         }
-        while (LwosKeyMappings.TOGGLE_TERRAIN_MODE.consumeClick()) tm.currentPath().toggleTerrainMode();
+        while (LwosKeyMappings.TOGGLE_TERRAIN_MODE.consumeClick()) {
+            // Same key, per-tool meaning (spec §1): brush op cycle vs the path terrain-mode cycle.
+            if (tm.isTerrainToolActive()) tm.currentBrush().cycleOp();
+            else tm.currentPath().toggleTerrainMode();
+        }
         while (LwosKeyMappings.COMMIT.consumeClick()) commitPath(tm);
     }
 
@@ -107,12 +119,36 @@ public final class LwosInputHandler {
     public static void onScroll(InputEvent.MouseScrollingEvent event) {
         if (!inWorld() || !isModUser()) return;
         ToolManager tm = ToolManager.get();
-        if (!tm.isEnabled() || !altHeld()) return;
+        if (!tm.isEnabled()) return;
         double delta = event.getScrollDelta();
-        if (delta != 0) {
+        if (delta == 0) return;
+        if (altHeld()) {
             tm.cycle(delta > 0 ? 1 : -1);
             event.setCanceled(true); // don't move the hotbar selection
+            return;
         }
+        // Ctrl+scroll: brush radius (spec §1). Precedence: with the panel open and the cursor
+        // over it while Ctrl is held, the panel's Ctrl-edit interaction wins.
+        if (ctrlHeld() && tm.isTerrainToolActive()) {
+            if (com.lwos.ui.PathStylePanelState.isEditing() && com.lwos.ui.PathStylePanel.cursorOverPanel()) return;
+            tm.currentBrush().adjustRadius(delta > 0 ? 1 : -1);
+            event.setCanceled(true);
+        }
+    }
+
+    /** Left-click with the Terrain tool: commit the previewed dab at the targeted ground column (spec §1). */
+    @SubscribeEvent
+    public static void onAttack(InputEvent.InteractionKeyMappingTriggered event) {
+        if (!event.isAttack() || !inWorld() || !isModUser()) return;
+        ToolManager tm = ToolManager.get();
+        if (!tm.isTerrainToolActive()) return;
+        event.setSwingHand(false);
+        event.setCanceled(true); // the brush owns left-click while active — never break blocks
+        if (!BrushRenderer.hasTarget) return; // looking at sky: no preview, click does nothing
+        com.lwos.tool.TerrainBrushTool brush = tm.currentBrush();
+        LwosMod.CHANNEL.sendToServer(new com.lwos.apply.net.BrushRequestPacket(
+                brush.op().ordinal(), BrushRenderer.targetX, BrushRenderer.targetZ, brush.radius()));
+        brush.bumpRevision(); // the ground under the preview just changed; force a rebuild
     }
 
     @SubscribeEvent
