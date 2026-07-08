@@ -1,5 +1,6 @@
 package com.lwos;
 
+import com.lwos.apply.net.BrushRequestPacket;
 import com.lwos.apply.net.EditRequestPacket;
 import com.lwos.apply.net.RedoRequestPacket;
 import com.lwos.apply.net.UndoRequestPacket;
@@ -43,6 +44,9 @@ public class LwosMod {
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(id++, RedoRequestPacket.class,
                 RedoRequestPacket::encode, RedoRequestPacket::decode, RedoRequestPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, BrushRequestPacket.class,
+                BrushRequestPacket::encode, BrushRequestPacket::decode, BrushRequestPacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 }
