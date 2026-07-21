@@ -2105,3 +2105,16 @@ Append to this plan file's end, committed:
 - [ ] Far from origin (±1,000,000): preview stays textured (no white slivers).
 - [ ] GUI scales 1–4: wheel shows 8 icons, HUD text readable.
 ```
+
+## Manual playtest checklist (pending)
+- [ ] Each shape (Line/Wall/Floor/Cube/Circle/Sphere): place at small + large size; preview matches commit.
+- [ ] Left-click break for each shape; red preview; drops only when survivalMode=true.
+- [ ] Mid-air stretching past terrain; extent clamp at 64.
+- [ ] M cycles Filled/Hollow; HUD plate updates; Line unaffected.
+- [ ] Cube 3-click flow: base rectangle then vertical extrusion.
+- [ ] Mixed-intent click cancels the gesture.
+- [ ] Undo/redo across shape commits (Ctrl+Z / Ctrl+Y).
+- [ ] survivalMode=true on dev server: item consumption, shortfall rejection message, cap message.
+- [ ] Spring feel: anchor bounce-in, extent chase with slight overshoot, settles < ~0.5 s.
+- [ ] Far from origin (±1,000,000): preview stays textured (no white slivers).
+- [ ] GUI scales 1–4: wheel shows 8 icons, HUD text readable.
