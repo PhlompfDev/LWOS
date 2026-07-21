@@ -38,18 +38,16 @@ public final class JournalTheme {
     public static final int STITCH_U = 0,  STITCH_V = 48, STITCH_W = 64, STITCH_H = 4;
     public static final int STRAP_U = 88,  STRAP_V = 0,  STRAP_W = 6,  STRAP_H = 24, STRAP_CAP = 6;
     public static final int TOOL_ICON_U = 0, TOOL_ICON_V = 64, TOOL_ICON_SIZE = 16;
-    public static final int TOOL_ICON_ROW2_V = 80; // shape icons, ToolType.iconIndex() 5..8
+    public static final int TOOL_ICON_V2_V = 96; // icon set v2 row: 8 slots, ToolType.iconIndex() 0..7
     public static final int SEL_RING_U = 80,  SEL_RING_V = 64, SEL_RING_SIZE = 24;
 
     // Standalone sheets.
     public static final int PANEL_TEX = 48,  PANEL_INSET = 12;
     public static final int HUD_TEX_W = 32,  HUD_TEX_H = 16, HUD_INSET = 6;
 
-    /** Blits the 16x16 tool glyph for a ToolType.iconIndex() slot (rows at v=64 and v=80). */
+    /** Blits the 16x16 tool glyph for a ToolType.iconIndex() slot (icon set v2 row, v=96). */
     public static void blitToolIcon(GuiGraphics g, int iconIndex, int x, int y) {
-        int u = (iconIndex % 5) * TOOL_ICON_SIZE;
-        int v = iconIndex < 5 ? TOOL_ICON_V : TOOL_ICON_ROW2_V;
-        blitRegion(g, u, v, TOOL_ICON_SIZE, TOOL_ICON_SIZE, x, y);
+        blitRegion(g, iconIndex * TOOL_ICON_SIZE, TOOL_ICON_V2_V, TOOL_ICON_SIZE, TOOL_ICON_SIZE, x, y);
     }
 
     /** 1:1 blit of a widgets.png region. */

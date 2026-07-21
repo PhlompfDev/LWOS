@@ -5,19 +5,19 @@ import com.lwos.shape.ShapeMode;
 /**
  * The tools shown in the Alt+Scroll wheel. PATH and TERRAIN have bespoke tools; the six
  * shape entries all route to the shared {@link ShapeTool}, parameterized by shapeMode.
- * iconIndex is the widgets.png strip slot (16x16 glyphs; indices 0..4 at v=64, 5..8 at
- * v=80) — decoupled from ordinal() so existing sheet art never moves (FILL's old slot 3
- * is orphaned, its bucket art stays in the sheet unused).
+ * iconIndex is the widgets.png icon-set-v2 slot (16x16 glyphs in one row at v=96,
+ * u = index*16) — kept explicit rather than ordinal() so sheet layout and enum order
+ * can evolve independently (rows 1-2 hold the retired v1 glyphs, unused).
  */
 public enum ToolType {
     PATH("Path", 0, null),
-    TERRAIN("Terrain", 4, null),
-    LINE("Line", 1, ShapeMode.LINE),
-    WALL("Wall", 5, ShapeMode.WALL),
-    FLOOR("Floor", 6, ShapeMode.FLOOR),
-    CUBE("Cube", 7, ShapeMode.CUBE),
-    CIRCLE("Circle", 2, ShapeMode.CIRCLE),
-    SPHERE("Sphere", 8, ShapeMode.SPHERE);
+    TERRAIN("Terrain", 1, null),
+    LINE("Line", 2, ShapeMode.LINE),
+    WALL("Wall", 3, ShapeMode.WALL),
+    FLOOR("Floor", 4, ShapeMode.FLOOR),
+    CUBE("Cube", 5, ShapeMode.CUBE),
+    CIRCLE("Circle", 6, ShapeMode.CIRCLE),
+    SPHERE("Sphere", 7, ShapeMode.SPHERE);
 
     private final String displayName;
     private final int iconIndex;

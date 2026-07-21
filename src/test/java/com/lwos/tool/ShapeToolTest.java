@@ -51,8 +51,8 @@ class ShapeToolTest {
         assertNull(ToolType.TERRAIN.shapeMode());
         assertEquals(ShapeMode.WALL, ToolType.WALL.shapeMode());
         assertEquals(0, ToolType.PATH.iconIndex());
-        assertEquals(4, ToolType.TERRAIN.iconIndex());
-        assertEquals(8, ToolType.SPHERE.iconIndex());
+        assertEquals(1, ToolType.TERRAIN.iconIndex());
+        assertEquals(7, ToolType.SPHERE.iconIndex());
     }
 
     @Test

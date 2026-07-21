@@ -335,7 +335,178 @@ def gen_widgets(rng):
     d.arc([ox + 2, oy + 6, ox + 13, oy + 9], 0, 180, fill=INK + (180,))
     d.arc([ox + 6, oy + 2, ox + 9, oy + 13], 90, 270, fill=INK + (180,))
 
+    # --- tool icon set v2, row 3 (0,96)..(128,112): pixel-map glyphs, one 16x16 slot per
+    # ToolType.iconIndex() 0..7 (path, terrain, line, wall, floor, cube, circle, sphere).
+    # Appended after every existing region (append-only rule); the maps use no rng.
+    # Designed 2026-07-20 in the icons_v2 visual loop (spec: wheel-redesign-ui-tweens §3).
+    for idx, name in enumerate(ICON_V2_ORDER):
+        draw_pixmap(d, idx * 16, 96, ICON_V2[name])
+
     return img
+
+
+# Tool icon set v2 — journal ink pixel maps. Chars: '#'=ink 255, '+'=ink 200,
+# '.'=ink 140, 'w'=wax 230, ' '=empty. 16 rows x 16 cols each.
+ICON_V2_ORDER = ("path", "terrain", "line", "wall", "floor", "cube", "circle", "sphere")
+
+ICON_V2 = {
+    "path": (
+        "                ",
+        "            ww  ",
+        "           w  w ",
+        "            ww  ",
+        "          #     ",
+        "         #      ",
+        "        #       ",
+        "        #       ",
+        "         #      ",
+        "          #     ",
+        "         #      ",
+        "       ##       ",
+        "  ww  #         ",
+        " w  w#          ",
+        "  ww            ",
+        "                ",
+    ),
+    "terrain": (
+        "                ",
+        "                ",
+        "                ",
+        "     ##         ",
+        "    #  #        ",
+        "   #    #       ",
+        "  #      #      ",
+        " #        # ##  ",
+        "#          #  # ",
+        "################",
+        "  .    .    .   ",
+        "    .     .     ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+    ),
+    "line": (
+        "                ",
+        "                ",
+        "           +    ",
+        "            +#  ",
+        "            #+  ",
+        "           #    ",
+        "          #     ",
+        "         #      ",
+        "        #       ",
+        "       #        ",
+        "      #         ",
+        "     #          ",
+        "  +#            ",
+        "  #+            ",
+        "    +           ",
+        "                ",
+    ),
+    "wall": (
+        "                ",
+        "                ",
+        " ############## ",
+        " #  +   +    +# ",
+        " #############+ ",
+        " #+   +   +   # ",
+        " #############+ ",
+        " #  +    +   +# ",
+        " #############+ ",
+        " #+   +   +   # ",
+        " ############## ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+    ),
+    "floor": (
+        "                ",
+        "                ",
+        "                ",
+        "       ##       ",
+        "     ##  ##     ",
+        "   ##      ##   ",
+        " ##          ## ",
+        "#      ++      #",
+        " ##   +  +   ## ",
+        "   ## + + + ##  ",
+        "     ##+ ##     ",
+        "       ##       ",
+        "                ",
+        "                ",
+        "                ",
+        "                ",
+    ),
+    "cube": (
+        "                ",
+        "       ##       ",
+        "     ##  ##     ",
+        "   ##      ##   ",
+        " ##          ## ",
+        " #  ##    ##  # ",
+        " #    ## ##   # ",
+        " #     ###    # ",
+        " #     ##     # ",
+        " #     ##     # ",
+        " ##    ##    ## ",
+        "   ##  ##  ##   ",
+        "     ##  ##     ",
+        "       ##       ",
+        "                ",
+        "                ",
+    ),
+    "circle": (
+        "                ",
+        "       +        ",
+        "     #####      ",
+        "    #     #     ",
+        "   #       #    ",
+        "  #         #   ",
+        "  #         #   ",
+        " +#    w    #+  ",
+        "  #         #   ",
+        "  #         #   ",
+        "   #       #    ",
+        "    #     #     ",
+        "     #####      ",
+        "       +        ",
+        "                ",
+        "                ",
+    ),
+    "sphere": (
+        "                ",
+        "     #####      ",
+        "    #     #     ",
+        "   #   ++  #    ",
+        "  #   +  +  #   ",
+        "  #  +    + #   ",
+        "  # +      +#   ",
+        "  #+.......+#   ",
+        "  # +      +#   ",
+        "  #  +    + #   ",
+        "   #  +  + #    ",
+        "    #  ++ #     ",
+        "     #####      ",
+        "                ",
+        "                ",
+        "                ",
+    ),
+}
+
+PIXMAP_TONES = {"#": 255, "+": 200, ".": 140}
+
+
+def draw_pixmap(d, ox, oy, rows):
+    """Stamps a 16x16 char pixel map at (ox,oy): ink tones + wax accent (see ICON_V2)."""
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch == " ":
+                continue
+            color = (WAX + (230,)) if ch == "w" else (INK + (PIXMAP_TONES[ch],))
+            d.point((ox + x, oy + y), fill=color)
 
 
 SHEETS = (
