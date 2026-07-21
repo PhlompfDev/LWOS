@@ -36,14 +36,38 @@ public final class ShapeGeometry {
     }
 
     /**
-     * Free-corner rectangle (2026-07-21 free-placement revision): infers the plane from
-     * two arbitrary 3D corners. If exactly one axis agrees, that's the plane; if none
-     * agree, the axis with the smallest |delta| collapses to a's coordinate (ties prefer
-     * Y, then X) — the "most planar" reading of the two clicks. Two/three agreeing axes
-     * degenerate to a line/point via {@link #rect}.
+     * Free-corner rectangle with depth (2026-07-21 revision, depth added same day):
+     * infers the plane from two arbitrary 3D corners — an agreeing axis wins, otherwise
+     * the smallest |delta| axis (ties prefer Y, then X) is the plane normal — and the
+     * corners' span along that normal is the slab's THICKNESS: clicking the far corner
+     * two blocks out of the wall plane yields the same wall, that many blocks thick
+     * (corner-inclusive, like every other span in the tool). Hollow applies per layer,
+     * so a hollow thick wall is its perimeter frame extruded through the depth.
      */
     public static List<GridPos> rectAuto(GridPos a, GridPos b, boolean hollow) {
-        return rect(a, collapseToPlane(a, b), hollow);
+        b = clampToExtent(a, b);
+        int axis = rectFixedAxis(a, b);
+        List<GridPos> base = rect(a, collapseToPlane(a, b), hollow);
+        int from = axisCoord(a, axis), to = axisCoord(b, axis);
+        if (from == to) return base;
+        List<GridPos> out = new ArrayList<>();
+        int s = Integer.signum(to - from);
+        for (int c = from; c != to + s; c += s) {
+            for (GridPos p : base) out.add(withAxisCoord(p, axis, c));
+        }
+        return out;
+    }
+
+    private static int axisCoord(GridPos p, int axis) {
+        return switch (axis) { case 0 -> p.x(); case 1 -> p.y(); default -> p.z(); };
+    }
+
+    private static GridPos withAxisCoord(GridPos p, int axis, int c) {
+        return switch (axis) {
+            case 0 -> new GridPos(c, p.y(), p.z());
+            case 1 -> new GridPos(p.x(), c, p.z());
+            default -> new GridPos(p.x(), p.y(), c);
+        };
     }
 
     /**

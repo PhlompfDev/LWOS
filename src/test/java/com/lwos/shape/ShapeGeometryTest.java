@@ -44,28 +44,40 @@ class ShapeGeometryTest {
     }
 
     @Test
-    void rectAutoCollapsesSmallestDelta() {
-        // No axis agrees: dy=1 is smallest -> collapse Y to a's value = horizontal floor.
-        List<GridPos> r = ShapeGeometry.rect(
-                new GridPos(0, 5, 0), ShapeGeometry.collapseToPlane(new GridPos(0, 5, 0), new GridPos(3, 6, 4)), false);
-        assertEquals(4 * 5, r.size());
-        for (GridPos p : r) assertEquals(5, p.y());
+    void rectAutoDepthBecomesThickness() {
+        // No axis agrees: dy=1 smallest -> horizontal floor, TWO layers thick (y 5 and 6).
+        List<GridPos> r = ShapeGeometry.rectAuto(new GridPos(0, 5, 0), new GridPos(3, 6, 4), false);
+        assertEquals(4 * 5 * 2, r.size());
+        for (GridPos p : r) assertTrue(p.y() == 5 || p.y() == 6);
         assertEquals(1, ShapeGeometry.rectFixedAxis(new GridPos(0, 5, 0), new GridPos(3, 6, 4)));
     }
 
     @Test
     void rectAutoKeepsVerticalWallWhenXAgrees() {
-        // One corner up top, one further down: x agrees -> ZY wall, no collapse.
+        // One corner up top, one further down: x agrees -> ZY wall, single layer.
         assertEquals(0, ShapeGeometry.rectFixedAxis(new GridPos(2, 10, 0), new GridPos(2, 4, 5)));
         assertEquals(7 * 6, ShapeGeometry.rectAuto(new GridPos(2, 10, 0), new GridPos(2, 4, 5), false).size());
     }
 
     @Test
-    void rectAutoTallDiagonalBecomesWall() {
-        // dy dominates (10) with dx=2 smallest -> collapse X: a vertical wall spanning Z,Y.
+    void rectAutoWallTwoBlocksOut() {
+        // The user scenario: top-left of a wall, then bottom-right but 2 out of the plane
+        // (dz=1 -> 2 thick): same XY wall, two layers, corner-inclusive.
+        GridPos a = new GridPos(0, 10, 0), b = new GridPos(6, 4, 1);
+        assertEquals(2, ShapeGeometry.rectFixedAxis(a, b));
+        List<GridPos> r = ShapeGeometry.rectAuto(a, b, false);
+        assertEquals(7 * 7 * 2, r.size());
+        for (GridPos p : r) assertTrue(p.z() == 0 || p.z() == 1);
+    }
+
+    @Test
+    void rectAutoTallDiagonalBecomesThickWall() {
+        // dy dominates (10) with dx=2 smallest -> vertical ZY wall, 3 blocks thick (x 0..2).
         GridPos a = new GridPos(0, 0, 0), b = new GridPos(2, 10, 6);
         assertEquals(0, ShapeGeometry.rectFixedAxis(a, b));
-        for (GridPos p : ShapeGeometry.rectAuto(a, b, false)) assertEquals(0, p.x());
+        List<GridPos> r = ShapeGeometry.rectAuto(a, b, false);
+        assertEquals(7 * 11 * 3, r.size());
+        for (GridPos p : r) assertTrue(p.x() >= 0 && p.x() <= 2);
     }
 
     @Test
