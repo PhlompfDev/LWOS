@@ -50,9 +50,7 @@ public final class ToolWheelOverlay implements IGuiOverlay {
                 JournalTheme.blitRegion(g, JournalTheme.SEL_RING_U, JournalTheme.SEL_RING_V,
                         JournalTheme.SEL_RING_SIZE, JournalTheme.SEL_RING_SIZE, x - 12, y - 12);
             }
-            JournalTheme.blitRegion(g, JournalTheme.TOOL_ICON_U + i * JournalTheme.TOOL_ICON_SIZE,
-                    JournalTheme.TOOL_ICON_V, JournalTheme.TOOL_ICON_SIZE, JournalTheme.TOOL_ICON_SIZE,
-                    x - 8, y - 8);
+            JournalTheme.blitToolIcon(g, tools[i].iconIndex(), x - 8, y - 8);
         }
         String name = tm.selected().displayName();
         g.drawString(font, name, cx - font.width(name) / 2, cy + 6, JournalTheme.WAX, false);

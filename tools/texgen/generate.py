@@ -301,6 +301,40 @@ def gen_widgets(rng):
         d.point((round(rcx + rr * math.cos(ang)), round(rcy + rr * math.sin(ang))),
                 fill=WAX + (230,))
 
+    # --- shape tool icons row 2 (0,80)..(64,96), 16x16, ToolType.iconIndex() order 5..8 ---
+    # (Appended after every existing region per the RNG append-only rule; these draws use
+    # no rng, so all prior pixels stay byte-identical.)
+    # WALL (0,80): brick courses in a rectangle
+    ox, oy = 0, 80
+    d.rectangle([ox + 2, oy + 3, ox + 13, oy + 12], outline=INK + (255,))
+    for row, yy in ((0, 6), (1, 9)):
+        d.line([(ox + 3, oy + yy), (ox + 12, oy + yy)], fill=INK + (200,))
+        for bx in range(ox + 5 + 3 * row, ox + 13, 4):
+            d.line([(bx, oy + yy - 2), (bx, oy + yy - 1)], fill=INK + (170,))
+
+    # FLOOR (16,80): receding grid plane
+    ox, oy = 16, 80
+    d.polygon([(ox + 2, oy + 12), (ox + 6, oy + 5), (ox + 13, oy + 5), (ox + 13, oy + 12)],
+              outline=INK + (255,))
+    d.line([(ox + 4, oy + 12), (ox + 8, oy + 5)], fill=INK + (170,))
+    d.line([(ox + 8, oy + 12), (ox + 10, oy + 5)], fill=INK + (170,))
+    d.line([(ox + 3, oy + 9), (ox + 13, oy + 9)], fill=INK + (170,))
+
+    # CUBE (32,80): isometric cube, front edges solid
+    ox, oy = 32, 80
+    d.polygon([(ox + 8, oy + 2), (ox + 13, oy + 5), (ox + 13, oy + 11),
+               (ox + 8, oy + 14), (ox + 3, oy + 11), (ox + 3, oy + 5)],
+              outline=INK + (255,))
+    d.line([(ox + 3, oy + 5), (ox + 8, oy + 8)], fill=INK + (255,))
+    d.line([(ox + 13, oy + 5), (ox + 8, oy + 8)], fill=INK + (255,))
+    d.line([(ox + 8, oy + 8), (ox + 8, oy + 14)], fill=INK + (255,))
+
+    # SPHERE (48,80): circle with equator + meridian ellipses
+    ox, oy = 48, 80
+    d.ellipse([ox + 2, oy + 2, ox + 13, oy + 13], outline=INK + (255,))
+    d.arc([ox + 2, oy + 6, ox + 13, oy + 9], 0, 180, fill=INK + (180,))
+    d.arc([ox + 6, oy + 2, ox + 9, oy + 13], 90, 270, fill=INK + (180,))
+
     return img
 
 
