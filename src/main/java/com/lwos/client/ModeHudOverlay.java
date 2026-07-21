@@ -33,6 +33,14 @@ public final class ModeHudOverlay implements IGuiOverlay {
             // Brush readout (spec §1): e.g. "Smooth · r6".
             com.lwos.tool.TerrainBrushTool brush = tm.currentBrush();
             text = brush.op().displayName() + " · r" + brush.radius();
+        } else if (tm.isShapeToolActive()) {
+            // Shape readout (spec §5): e.g. "Cube · Filled" (+ BREAK while a break gesture runs).
+            com.lwos.tool.ShapeTool shape = tm.currentShape();
+            String fill = tm.activeShapeMode().supportsFill()
+                    ? (shape.options().hollow() ? " · Hollow" : " · Filled") : "";
+            String intent = shape.state() != com.lwos.tool.ShapeTool.State.IDLE && shape.breakMode()
+                    ? " · BREAK" : "";
+            text = tm.selected().displayName() + fill + intent;
         } else if (tm.isPathToolActive()) {
             text = "Mode: " + tm.currentPath().terrainMode().displayName();
         } else {

@@ -63,15 +63,20 @@ public final class LwosInputHandler {
         while (LwosKeyMappings.UNDO.consumeClick()) {
             LwosMod.CHANNEL.sendToServer(new com.lwos.apply.net.UndoRequestPacket());
             tm.currentBrush().bumpRevision(); // ground may change under the brush preview
+            tm.currentShape().bumpRevision(); // ... and under the shape preview
         }
         while (LwosKeyMappings.REDO.consumeClick()) {
             LwosMod.CHANNEL.sendToServer(new com.lwos.apply.net.RedoRequestPacket());
             tm.currentBrush().bumpRevision();
+            tm.currentShape().bumpRevision();
         }
         while (LwosKeyMappings.PICK_BLOCK.consumeClick()) pickBlockFromWorld();
         while (LwosKeyMappings.DELETE_POINT.consumeClick()) tm.currentPath().deleteLast();
         while (LwosKeyMappings.REDO_POINT.consumeClick()) tm.currentPath().redoPoint();
-        while (LwosKeyMappings.CANCEL_PATH.consumeClick()) tm.currentPath().clear();
+        while (LwosKeyMappings.CANCEL_PATH.consumeClick()) {
+            if (tm.isShapeToolActive()) tm.currentShape().clear();
+            else tm.currentPath().clear();
+        }
         while (LwosKeyMappings.WIDTH_UP.consumeClick()) {
             tm.currentPath().setWidth(tm.currentPath().width() + 1.0);
         }
@@ -79,11 +84,70 @@ public final class LwosInputHandler {
             tm.currentPath().setWidth(tm.currentPath().width() - 1.0);
         }
         while (LwosKeyMappings.TOGGLE_TERRAIN_MODE.consumeClick()) {
-            // Same key, per-tool meaning (spec §1): brush op cycle vs the path terrain-mode cycle.
+            // Same key, per-tool meaning: brush op cycle, shape fill cycle, path terrain-mode cycle.
             if (tm.isTerrainToolActive()) tm.currentBrush().cycleOp();
+            else if (tm.isShapeToolActive()) tm.currentShape().cycleFill();
             else tm.currentPath().toggleTerrainMode();
         }
         while (LwosKeyMappings.COMMIT.consumeClick()) commitPath(tm);
+    }
+
+    /** Drives the shape gesture: anchor clicks accumulate; the final click commits (spec §2). */
+    private static void handleShapeClick(ToolManager tm, boolean asBreak) {
+        com.lwos.tool.ShapeTool tool = tm.currentShape();
+        com.lwos.shape.ShapeMode mode = tm.activeShapeMode();
+        Minecraft mc = Minecraft.getInstance();
+
+        if (tool.state() == com.lwos.tool.ShapeTool.State.IDLE) {
+            // First anchor: terrain raycast; place-gestures also need a block in hand.
+            Vec3 eye = mc.player.getEyePosition(1.0f);
+            Vec3 look = mc.player.getViewVector(1.0f);
+            com.lwos.plan.GridPos anchor = ShapeRenderer.terrainAnchor(mc, eye, look, asBreak);
+            if (anchor == null) return;
+            if (!asBreak) {
+                com.lwos.plan.BlockStateRef material = heldBlock(mc);
+                if (material == null) {
+                    mc.player.displayClientMessage(
+                            net.minecraft.network.chat.Component.literal("Hold a block to build shapes"), true);
+                    return;
+                }
+                tool.setMaterial(material);
+            }
+            tool.addAnchor(anchor, asBreak);
+            if (mode == com.lwos.shape.ShapeMode.WALL) ShapeRenderer.latchWallNormal(look);
+            ShapeRenderer.snapSpringsTo(anchor);
+            return;
+        }
+
+        // Mid-gesture: a click of the opposite intent cancels (ShapeTool enforces it).
+        if (asBreak != tool.breakMode()) {
+            tool.addAnchor(new com.lwos.plan.GridPos(0, 0, 0), asBreak); // rejected -> clears
+            return;
+        }
+        if (!ShapeRenderer.hasTarget) return; // aiming at nothing valid: click does nothing
+        com.lwos.plan.GridPos aim = ShapeRenderer.aimTarget;
+
+        if (tool.isComplete(mode)) {
+            // Final click: commit with the live aim as the last anchor.
+            List<com.lwos.plan.GridPos> anchors = new ArrayList<>(tool.anchors());
+            anchors.add(aim);
+            LwosMod.CHANNEL.sendToServer(new com.lwos.apply.net.ShapeRequestPacket(
+                    anchors, mode.ordinal(), tool.options().toJson(),
+                    tool.material().id(), tool.breakMode()));
+            tool.clear();
+            tool.bumpRevision(); // world changed under any lingering preview
+        } else {
+            tool.addAnchor(aim, asBreak); // cube: base corner locked, extrusion begins
+        }
+    }
+
+    /** BlockStateRef of the main-hand BlockItem, or null when not holding a placeable block. */
+    private static com.lwos.plan.BlockStateRef heldBlock(Minecraft mc) {
+        net.minecraft.world.item.ItemStack held = mc.player.getMainHandItem();
+        if (!(held.getItem() instanceof net.minecraft.world.item.BlockItem blockItem)) return null;
+        net.minecraft.resources.ResourceLocation id =
+                net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(blockItem.getBlock());
+        return id == null ? null : new com.lwos.plan.BlockStateRef(id.toString());
     }
 
     /** Assigns the block the player is looking at to the panel's active palette slot. */
@@ -141,6 +205,12 @@ public final class LwosInputHandler {
     public static void onAttack(InputEvent.InteractionKeyMappingTriggered event) {
         if (!event.isAttack() || !inWorld() || !isModUser()) return;
         ToolManager tm = ToolManager.get();
+        if (tm.isShapeToolActive()) {
+            event.setSwingHand(false);
+            event.setCanceled(true); // the shape tool owns left-click — never swing/break vanilla-style
+            handleShapeClick(tm, true);
+            return;
+        }
         if (!tm.isTerrainToolActive()) return;
         event.setSwingHand(false);
         event.setCanceled(true); // the brush owns left-click while active — never break blocks
@@ -155,6 +225,12 @@ public final class LwosInputHandler {
     public static void onUse(InputEvent.InteractionKeyMappingTriggered event) {
         if (!event.isUseItem() || !inWorld() || !isModUser()) return;
         ToolManager tm = ToolManager.get();
+        if (tm.isShapeToolActive()) {
+            handleShapeClick(tm, false);
+            event.setSwingHand(false);
+            event.setCanceled(true);
+            return;
+        }
         if (!tm.isPathToolActive()) return;
         PathTool path = tm.currentPath();
 
