@@ -3,6 +3,7 @@ package com.lwos;
 import com.lwos.apply.net.BrushRequestPacket;
 import com.lwos.apply.net.EditRequestPacket;
 import com.lwos.apply.net.RedoRequestPacket;
+import com.lwos.apply.net.ShapeRequestPacket;
 import com.lwos.apply.net.UndoRequestPacket;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
@@ -30,6 +31,8 @@ public class LwosMod {
 
     public LwosMod() {
         LOGGER.info("LWOS Builder Tools loading");
+        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(
+                net.minecraftforge.fml.config.ModConfig.Type.SERVER, LwosServerConfig.SPEC);
         registerPackets();
         // Client-side registrations are wired by @Mod.EventBusSubscriber classes (guarded by Dist.CLIENT).
     }
@@ -47,6 +50,9 @@ public class LwosMod {
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(id++, BrushRequestPacket.class,
                 BrushRequestPacket::encode, BrushRequestPacket::decode, BrushRequestPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, ShapeRequestPacket.class,
+                ShapeRequestPacket::encode, ShapeRequestPacket::decode, ShapeRequestPacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 }

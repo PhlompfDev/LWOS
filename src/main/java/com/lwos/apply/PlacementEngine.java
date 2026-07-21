@@ -35,16 +35,29 @@ public final class PlacementEngine {
      *                          is skipped so survival edits can't punch through the world floor.
      */
     public static List<BlockSnapshot> apply(ServerLevel level, EditPlan plan, boolean canReplaceBedrock) {
+        return apply(level, plan, canReplaceBedrock, false);
+    }
+
+    /**
+     * @param dropBrokenBlocks survival-mode shape breaks: REMOVE-kind changes drop their
+     *                         block's loot before the air write (spec §7).
+     */
+    public static List<BlockSnapshot> apply(ServerLevel level, EditPlan plan,
+                                            boolean canReplaceBedrock, boolean dropBrokenBlocks) {
         List<BlockSnapshot> priors = new ArrayList<>();
         for (PlannedChange change : plan.changes().values()) {
             BlockState state = resolve(change.state());
             if (state == null) continue; // unknown block id — skip rather than crash
             GridPos p = change.pos();
             BlockPos pos = new BlockPos(p.x(), p.y(), p.z());
+            BlockState current = level.getBlockState(pos);
             // Protect bedrock outside creative: leave the existing block untouched (spec: no carving
             // or overwriting the bedrock floor in survival).
-            if (!canReplaceBedrock && level.getBlockState(pos).is(Blocks.BEDROCK)) continue;
-            priors.add(new BlockSnapshot(p, toRef(level.getBlockState(pos))));
+            if (!canReplaceBedrock && current.is(Blocks.BEDROCK)) continue;
+            if (dropBrokenBlocks && change.kind() == com.lwos.plan.ChangeKind.REMOVE && !current.isAir()) {
+                Block.dropResources(current, level, pos, level.getBlockEntity(pos));
+            }
+            priors.add(new BlockSnapshot(p, toRef(current)));
             level.setBlock(pos, state, Block.UPDATE_ALL);
         }
         return priors;
