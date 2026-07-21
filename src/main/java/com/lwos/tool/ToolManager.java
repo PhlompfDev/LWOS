@@ -14,6 +14,7 @@ public class ToolManager {
     private ToolType selected = ToolType.PATH;
     private final PathTool pathTool = new PathTool();
     private final TerrainBrushTool brushTool = new TerrainBrushTool();
+    private final ShapeTool shapeTool = new ShapeTool();
 
     private ToolManager() { }
 
@@ -21,13 +22,17 @@ public class ToolManager {
 
     public void toggleEnabled() {
         enabled = !enabled;
-        if (!enabled) pathTool.clear(); // leaving builder mode discards the in-progress path
+        if (!enabled) {
+            pathTool.clear();  // leaving builder mode discards the in-progress path
+            shapeTool.clear(); // ... and any in-progress shape gesture
+        }
     }
 
     public void cycle(int dir) {
         ToolType[] all = ToolType.values();
         int i = (selected.ordinal() + Integer.signum(dir) + all.length) % all.length;
         selected = all[i];
+        shapeTool.clear(); // switching tools abandons the gesture (anchors are mode-specific)
     }
 
     public ToolType selected() { return selected; }
@@ -39,4 +44,11 @@ public class ToolManager {
     public boolean isTerrainToolActive() { return enabled && selected == ToolType.TERRAIN; }
 
     public TerrainBrushTool currentBrush() { return brushTool; }
+
+    public boolean isShapeToolActive() { return enabled && selected.shapeMode() != null; }
+
+    public ShapeTool currentShape() { return shapeTool; }
+
+    /** The ShapeMode of the selected tool, or null when a bespoke tool is selected. */
+    public com.lwos.shape.ShapeMode activeShapeMode() { return selected.shapeMode(); }
 }

@@ -68,14 +68,14 @@ class ToolSessionTest {
         ToolManager tm = ToolManager.get();
         assertEquals(ToolType.PATH, tm.selected());
         tm.cycle(1);
-        assertEquals(ToolType.LINE, tm.selected());
+        assertEquals(ToolType.TERRAIN, tm.selected());
         // A full loop (values().length tools) returns to the same tool.
         for (int i = 0; i < ToolType.values().length; i++) tm.cycle(1);
-        assertEquals(ToolType.LINE, tm.selected());
+        assertEquals(ToolType.TERRAIN, tm.selected());
         tm.cycle(-1);
         assertEquals(ToolType.PATH, tm.selected());
         tm.cycle(-1);
-        assertEquals(ToolType.TERRAIN, tm.selected()); // wrap backwards
+        assertEquals(ToolType.SPHERE, tm.selected()); // wrap backwards
     }
 
     @Test
