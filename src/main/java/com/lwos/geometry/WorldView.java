@@ -21,4 +21,13 @@ public interface WorldView {
 
     /** Block id (e.g. "minecraft:stone") of the topmost solid surface block at the column. */
     String surfaceBlockId(int x, int z);
+
+    /**
+     * Registry id of the block at an exact position. Default derives a column-world answer
+     * from the surface queries (above surface = air, else the surface block id) so simple
+     * fake views keep working; the Forge-backed views override with real lookups.
+     */
+    default String blockIdAt(int x, int y, int z) {
+        return y > surfaceHeight(x, z) ? "minecraft:air" : surfaceBlockId(x, z);
+    }
 }

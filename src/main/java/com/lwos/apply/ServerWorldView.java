@@ -31,4 +31,9 @@ public final class ServerWorldView implements WorldView {
     public String surfaceBlockId(int x, int z) {
         return SurfaceScan.surfaceBlockId(level, x, z);
     }
+
+    @Override
+    public String blockIdAt(int x, int y, int z) {
+        return SurfaceScan.blockId(level, x, y, z);
+    }
 }

@@ -60,4 +60,12 @@ public final class SurfaceScan {
         ResourceLocation id = ForgeRegistries.BLOCKS.getKey(state.getBlock());
         return id == null ? "minecraft:air" : id.toString();
     }
+
+    /** Registry id of the block at the exact position ("minecraft:air" outside the build height). */
+    public static String blockId(LevelReader level, int x, int y, int z) {
+        BlockPos pos = new BlockPos(x, y, z);
+        if (level.isOutsideBuildHeight(pos)) return "minecraft:air";
+        ResourceLocation id = ForgeRegistries.BLOCKS.getKey(level.getBlockState(pos).getBlock());
+        return id == null ? "minecraft:air" : id.toString();
+    }
 }
