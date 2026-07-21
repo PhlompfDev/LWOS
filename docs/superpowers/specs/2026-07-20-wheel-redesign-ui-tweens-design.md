@@ -67,3 +67,12 @@ feel ζ=0.8 / 3 Hz; sliders use a snappier ζ=0.9 / 6 Hz).
   changes.
 - Build gate + manual playtest checklist (wheel hover/click/release-select at GUI
   scales 1–4, ring sweep, slider glide).
+
+## Manual playtest checklist (pending)
+- [ ] Alt opens the wheel: cursor freed, disc scale/fade-in springs, world stays live.
+- [ ] Hover each of the 8 sectors: icon scales up, name shows at center; dead zone near center hovers nothing.
+- [ ] Click selects; Alt-release selects the hovered tool; Alt+scroll still cycles.
+- [ ] Wax ring sweeps (shortest arc) on selection change instead of teleporting.
+- [ ] Icon set v2 legible on the parchment disc at GUI scales 1–4.
+- [ ] Style panel sliders: preset switch makes knobs glide with a slight settle; Ctrl-drag tracks closely; hit-testing unchanged.
+- [ ] No cursor-grab conflicts between the wheel (Alt) and panel editing (Ctrl).
