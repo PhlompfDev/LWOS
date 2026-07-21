@@ -44,8 +44,9 @@ public final class ShapeRenderer {
     // Published each frame for LwosInputHandler.
     public static volatile boolean hasTarget = false;
     public static volatile GridPos aimTarget = null;
-    /** Wall construction plane normal, latched at anchor time from the look direction. */
-    public static volatile boolean wallNormalIsX = false;
+
+    /** First-anchor pick: the cell plus the clicked face's axis (circle orientation). */
+    public record AnchorHit(GridPos pos, com.lwos.shape.ShapeOptions.Axis faceAxis) { }
 
     private static final PreviewPlanCache CACHE = new PreviewPlanCache();
 
@@ -59,11 +60,6 @@ public final class ShapeRenderer {
     private static long lastFrameNanos = 0;
 
     private ShapeRenderer() { }
-
-    /** Called by LwosInputHandler when the first WALL anchor is placed. */
-    public static void latchWallNormal(Vec3 look) {
-        wallNormalIsX = Math.abs(look.x) >= Math.abs(look.z);
-    }
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
@@ -101,9 +97,13 @@ public final class ShapeRenderer {
             return;
         }
 
-        // Full anchor list = committed anchors + the live aim as the final anchor.
+        // Full anchor list = committed anchors + the live aim as the final anchor, PADDED
+        // to the mode's clickCount by repeating the aim: mid-gesture cube previews (1 anchor
+        // + aim = 2 of 3) render as the base slab instead of crashing the render thread
+        // (2026-07-21 playtest fix — ShapePlanBuilder stays strict for commits).
         List<GridPos> anchors = new ArrayList<>(tool.anchors());
         anchors.add(aim);
+        while (anchors.size() < mode.clickCount()) anchors.add(aim);
         ShapeKey key = new ShapeKey(tool.revision(), aim, mode.ordinal());
         long now = System.currentTimeMillis();
         if (CACHE.needsRebuild(key, now)) {
@@ -153,32 +153,34 @@ public final class ShapeRenderer {
     }
 
     private static GridPos computeAim(Minecraft mc, ShapeTool tool, ShapeMode mode, Vec3 eye, Vec3 look) {
-        if (tool.state() == ShapeTool.State.IDLE) return terrainAnchor(mc, eye, look, tool.breakMode());
+        if (tool.state() == ShapeTool.State.IDLE) {
+            AnchorHit hit = terrainAnchor(mc, eye, look, tool.breakMode());
+            return hit == null ? null : hit.pos();
+        }
         GridPos a = tool.anchors().get(0);
-        return switch (mode) {
-            case LINE -> ShapeAim.aimLine(eye, look, a);
-            case FLOOR, CIRCLE, SPHERE -> ShapeAim.aimPlaneY(eye, look, a);
-            case WALL -> ShapeAim.aimWall(eye, look, a, wallNormalIsX);
-            case CUBE -> tool.state() == ShapeTool.State.ANCHORED
-                    ? ShapeAim.aimPlaneY(eye, look, a)
-                    : cubeExtrusionAim(tool, eye, look);
-        };
-    }
-
-    private static GridPos cubeExtrusionAim(ShapeTool tool, Vec3 eye, Vec3 look) {
-        GridPos b = tool.anchors().get(1);
-        Integer y = ShapeAim.aimHeight(eye, look, b);
-        return y == null ? null : new GridPos(b.x(), y, b.z());
+        // Cube's third click extrudes along the base plane's fixed axis (a wall base
+        // extrudes horizontally); everything else is free 3D aiming.
+        if (mode == ShapeMode.CUBE && tool.state() == ShapeTool.State.BASE_DONE) {
+            GridPos b = tool.anchors().get(1);
+            int axis = com.lwos.shape.ShapeGeometry.rectFixedAxis(a, b);
+            return ShapeAim.aimAlongAxis(eye, look, com.lwos.shape.ShapeGeometry.collapseToPlane(a, b), axis);
+        }
+        return ShapeAim.freeAim(mc, eye, look, a, tool.breakMode());
     }
 
     /** Terrain raycast for the first anchor: place = face-adjacent pos, break = hit block. */
-    public static GridPos terrainAnchor(Minecraft mc, Vec3 eye, Vec3 look, boolean forBreak) {
+    public static AnchorHit terrainAnchor(Minecraft mc, Vec3 eye, Vec3 look, boolean forBreak) {
         Vec3 end = eye.add(look.x * MAX_TARGET_DISTANCE, look.y * MAX_TARGET_DISTANCE, look.z * MAX_TARGET_DISTANCE);
         BlockHitResult hit = mc.level.clip(new ClipContext(
                 eye, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
         if (hit.getType() != HitResult.Type.BLOCK) return null;
         BlockPos pos = forBreak ? hit.getBlockPos() : hit.getBlockPos().relative(hit.getDirection());
-        return new GridPos(pos.getX(), pos.getY(), pos.getZ());
+        com.lwos.shape.ShapeOptions.Axis axis = switch (hit.getDirection().getAxis()) {
+            case X -> com.lwos.shape.ShapeOptions.Axis.X;
+            case Z -> com.lwos.shape.ShapeOptions.Axis.Z;
+            default -> com.lwos.shape.ShapeOptions.Axis.Y;
+        };
+        return new AnchorHit(new GridPos(pos.getX(), pos.getY(), pos.getZ()), axis);
     }
 
     /** Bounce-scaled wireframe outline around one block cell. */

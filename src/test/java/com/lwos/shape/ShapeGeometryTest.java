@@ -44,8 +44,42 @@ class ShapeGeometryTest {
     }
 
     @Test
+    void rectAutoCollapsesSmallestDelta() {
+        // No axis agrees: dy=1 is smallest -> collapse Y to a's value = horizontal floor.
+        List<GridPos> r = ShapeGeometry.rect(
+                new GridPos(0, 5, 0), ShapeGeometry.collapseToPlane(new GridPos(0, 5, 0), new GridPos(3, 6, 4)), false);
+        assertEquals(4 * 5, r.size());
+        for (GridPos p : r) assertEquals(5, p.y());
+        assertEquals(1, ShapeGeometry.rectFixedAxis(new GridPos(0, 5, 0), new GridPos(3, 6, 4)));
+    }
+
+    @Test
+    void rectAutoKeepsVerticalWallWhenXAgrees() {
+        // One corner up top, one further down: x agrees -> ZY wall, no collapse.
+        assertEquals(0, ShapeGeometry.rectFixedAxis(new GridPos(2, 10, 0), new GridPos(2, 4, 5)));
+        assertEquals(7 * 6, ShapeGeometry.rectAuto(new GridPos(2, 10, 0), new GridPos(2, 4, 5), false).size());
+    }
+
+    @Test
+    void rectAutoTallDiagonalBecomesWall() {
+        // dy dominates (10) with dx=2 smallest -> collapse X: a vertical wall spanning Z,Y.
+        GridPos a = new GridPos(0, 0, 0), b = new GridPos(2, 10, 6);
+        assertEquals(0, ShapeGeometry.rectFixedAxis(a, b));
+        for (GridPos p : ShapeGeometry.rectAuto(a, b, false)) assertEquals(0, p.x());
+    }
+
+    @Test
+    void verticalCircleOnWallAxis() {
+        // Normal X: circle spans Z and Y.
+        List<GridPos> c = ShapeGeometry.circle(new GridPos(3, 10, 0), 4, true, 0);
+        for (GridPos p : c) assertEquals(3, p.x());
+        assertTrue(c.contains(new GridPos(3, 14, 0)));
+        assertTrue(c.contains(new GridPos(3, 10, 4)));
+    }
+
+    @Test
     void circleIsSymmetricAndCentered() {
-        List<GridPos> c = ShapeGeometry.circle(new GridPos(0, 7, 0), 5, true);
+        List<GridPos> c = ShapeGeometry.circle(new GridPos(0, 7, 0), 5, true, 1);
         HashSet<GridPos> set = new HashSet<>(c);
         assertEquals(set.size(), c.size()); // no duplicates
         for (GridPos p : c) {
@@ -57,8 +91,8 @@ class ShapeGeometryTest {
 
     @Test
     void filledCircleContainsOutline() {
-        HashSet<GridPos> filled = new HashSet<>(ShapeGeometry.circle(new GridPos(0, 0, 0), 4, false));
-        assertTrue(filled.containsAll(ShapeGeometry.circle(new GridPos(0, 0, 0), 4, true)));
+        HashSet<GridPos> filled = new HashSet<>(ShapeGeometry.circle(new GridPos(0, 0, 0), 4, false, 1));
+        assertTrue(filled.containsAll(ShapeGeometry.circle(new GridPos(0, 0, 0), 4, true, 1)));
         assertTrue(filled.contains(new GridPos(0, 0, 0)));
     }
 

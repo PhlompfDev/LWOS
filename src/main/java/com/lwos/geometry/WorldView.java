@@ -30,4 +30,15 @@ public interface WorldView {
     default String blockIdAt(int x, int y, int z) {
         return y > surfaceHeight(x, z) ? "minecraft:air" : surfaceBlockId(x, z);
     }
+
+    /**
+     * Whether a placement may overwrite the block at the position (air, grass, flowers,
+     * snow layers, fluids — Minecraft's replaceable notion). Default treats only air-like
+     * ids as replaceable so simple fake views keep working; the Forge-backed views
+     * override with the real {@code BlockState.canBeReplaced()} answer.
+     */
+    default boolean isReplaceableAt(int x, int y, int z) {
+        String id = blockIdAt(x, y, z);
+        return "minecraft:air".equals(id) || "minecraft:cave_air".equals(id) || "minecraft:void_air".equals(id);
+    }
 }

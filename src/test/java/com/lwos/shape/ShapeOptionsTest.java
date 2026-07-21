@@ -34,6 +34,15 @@ class ShapeOptionsTest {
     }
 
     @Test
+    void axisRoundTripAndLenientDefault() {
+        ShapeOptions wallCircle = new ShapeOptions(ShapeOptions.Fill.HOLLOW, ShapeOptions.Axis.X);
+        assertEquals(wallCircle, ShapeOptions.fromJson(wallCircle.toJson()));
+        // Old payloads without an axis key default to the classic horizontal circle.
+        assertEquals(ShapeOptions.Axis.Y, ShapeOptions.fromJson("{\"fill\":\"HOLLOW\"}").axis());
+        assertEquals(ShapeOptions.Axis.Y, new ShapeOptions(ShapeOptions.Fill.FILLED).axis());
+    }
+
+    @Test
     void cycleFillTogglesBothWays() {
         assertEquals(ShapeOptions.Fill.HOLLOW, ShapeOptions.DEFAULT.cycleFill().fill());
         assertEquals(ShapeOptions.Fill.FILLED, ShapeOptions.DEFAULT.cycleFill().cycleFill().fill());

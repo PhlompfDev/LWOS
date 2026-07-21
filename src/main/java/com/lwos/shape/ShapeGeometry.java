@@ -36,6 +36,40 @@ public final class ShapeGeometry {
     }
 
     /**
+     * Free-corner rectangle (2026-07-21 free-placement revision): infers the plane from
+     * two arbitrary 3D corners. If exactly one axis agrees, that's the plane; if none
+     * agree, the axis with the smallest |delta| collapses to a's coordinate (ties prefer
+     * Y, then X) — the "most planar" reading of the two clicks. Two/three agreeing axes
+     * degenerate to a line/point via {@link #rect}.
+     */
+    public static List<GridPos> rectAuto(GridPos a, GridPos b, boolean hollow) {
+        return rect(a, collapseToPlane(a, b), hollow);
+    }
+
+    /**
+     * The fixed-plane axis {@link #rectAuto} would use for these corners: 0=X, 1=Y, 2=Z.
+     * Shared with cube so its extrusion runs perpendicular to the base plane.
+     */
+    public static int rectFixedAxis(GridPos a, GridPos b) {
+        int dx = Math.abs(b.x() - a.x()), dy = Math.abs(b.y() - a.y()), dz = Math.abs(b.z() - a.z());
+        if (dy == 0) return 1; // agreement wins outright, in rect()'s own priority order
+        if (dx == 0) return 0;
+        if (dz == 0) return 2;
+        if (dy <= dx && dy <= dz) return 1; // no agreement: collapse the smallest delta
+        if (dx <= dz) return 0;
+        return 2;
+    }
+
+    /** Collapses b's {@link #rectFixedAxis} coordinate to a's value. */
+    public static GridPos collapseToPlane(GridPos a, GridPos b) {
+        return switch (rectFixedAxis(a, b)) {
+            case 0 -> new GridPos(a.x(), b.y(), b.z());
+            case 1 -> new GridPos(b.x(), a.y(), b.z());
+            default -> new GridPos(b.x(), b.y(), a.z());
+        };
+    }
+
+    /**
      * Axis-aligned rectangle between two corners. The fixed axis is the one where the
      * corners agree (Y fixed = floor, X or Z fixed = wall); if several agree, the first
      * of Y, X, Z wins (degenerate rectangles collapse to lines/points).
@@ -86,20 +120,33 @@ public final class ShapeGeometry {
         return out;
     }
 
-    /** XZ-plane circle at center.y: ring (hollow) or disc (filled). */
-    public static List<GridPos> circle(GridPos center, int radius, boolean hollow) {
+    /**
+     * Circle on the plane whose normal is {@code axisOrdinal} (0=X, 1=Y, 2=Z): ring
+     * (hollow) or disc (filled). Axis Y is the classic horizontal circle; X/Z give
+     * vertical circles on walls (free-placement revision).
+     */
+    public static List<GridPos> circle(GridPos center, int radius, boolean hollow, int axisOrdinal) {
         radius = Math.min(Math.abs(radius), MAX_EXTENT);
         List<GridPos> out = new ArrayList<>();
-        for (int x = -radius; x <= radius; x++) {
-            for (int z = -radius; z <= radius; z++) {
-                double dist = Math.sqrt((double) x * x + (double) z * z);
+        for (int u = -radius; u <= radius; u++) {
+            for (int v = -radius; v <= radius; v++) {
+                double dist = Math.sqrt((double) u * u + (double) v * v);
                 boolean inside = dist <= radius + 0.5;
                 boolean onRing = inside && dist >= radius - 0.5;
                 if (hollow ? onRing : inside)
-                    out.add(new GridPos(center.x() + x, center.y(), center.z() + z));
+                    out.add(inPlane(center, axisOrdinal, u, v));
             }
         }
         return out;
+    }
+
+    /** Maps in-plane offsets (u,v) around center onto world axes for a plane normal. */
+    private static GridPos inPlane(GridPos c, int axisOrdinal, int u, int v) {
+        return switch (axisOrdinal) {
+            case 0 -> new GridPos(c.x(), c.y() + v, c.z() + u);  // normal X: plane spans Z,Y
+            case 2 -> new GridPos(c.x() + u, c.y() + v, c.z());  // normal Z: plane spans X,Y
+            default -> new GridPos(c.x() + u, c.y(), c.z() + v); // normal Y: plane spans X,Z
+        };
     }
 
     /** Sphere shell (hollow) or ball (filled) around center. */

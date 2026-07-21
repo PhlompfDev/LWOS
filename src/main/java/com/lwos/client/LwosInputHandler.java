@@ -102,8 +102,8 @@ public final class LwosInputHandler {
             // First anchor: terrain raycast; place-gestures also need a block in hand.
             Vec3 eye = mc.player.getEyePosition(1.0f);
             Vec3 look = mc.player.getViewVector(1.0f);
-            com.lwos.plan.GridPos anchor = ShapeRenderer.terrainAnchor(mc, eye, look, asBreak);
-            if (anchor == null) return;
+            ShapeRenderer.AnchorHit hit = ShapeRenderer.terrainAnchor(mc, eye, look, asBreak);
+            if (hit == null) return;
             if (!asBreak) {
                 com.lwos.plan.BlockStateRef material = heldBlock(mc);
                 if (material == null) {
@@ -113,9 +113,10 @@ public final class LwosInputHandler {
                 }
                 tool.setMaterial(material);
             }
-            tool.addAnchor(anchor, asBreak);
-            if (mode == com.lwos.shape.ShapeMode.WALL) ShapeRenderer.latchWallNormal(look);
-            ShapeRenderer.snapSpringsTo(anchor);
+            // Circles orient to the clicked face: click a wall, draw a vertical circle.
+            if (mode == com.lwos.shape.ShapeMode.CIRCLE) tool.setAxis(hit.faceAxis());
+            tool.addAnchor(hit.pos(), asBreak);
+            ShapeRenderer.snapSpringsTo(hit.pos());
             return;
         }
 

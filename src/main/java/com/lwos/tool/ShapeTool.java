@@ -61,6 +61,12 @@ public class ShapeTool {
         revision++;
     }
 
+    /** Circle plane normal, captured from the clicked face at first anchor (spec rev 2026-07-21). */
+    public void setAxis(ShapeOptions.Axis axis) {
+        options = options.withAxis(axis);
+        revision++;
+    }
+
     /** Captured from the main hand at first anchor (place gestures only). */
     public void setMaterial(BlockStateRef material) {
         this.material = material;

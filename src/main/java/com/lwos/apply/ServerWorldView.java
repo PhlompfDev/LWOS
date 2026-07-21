@@ -36,4 +36,9 @@ public final class ServerWorldView implements WorldView {
     public String blockIdAt(int x, int y, int z) {
         return SurfaceScan.blockId(level, x, y, z);
     }
+
+    @Override
+    public boolean isReplaceableAt(int x, int y, int z) {
+        return SurfaceScan.isReplaceable(level, x, y, z);
+    }
 }

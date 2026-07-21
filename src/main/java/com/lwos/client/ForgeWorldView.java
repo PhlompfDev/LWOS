@@ -41,4 +41,11 @@ public final class ForgeWorldView implements WorldView {
         if (level == null) return "minecraft:air";
         return SurfaceScan.blockId(level, x, y, z);
     }
+
+    @Override
+    public boolean isReplaceableAt(int x, int y, int z) {
+        Level level = Minecraft.getInstance().level;
+        if (level == null) return false;
+        return SurfaceScan.isReplaceable(level, x, y, z);
+    }
 }

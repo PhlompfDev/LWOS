@@ -68,4 +68,14 @@ public final class SurfaceScan {
         ResourceLocation id = ForgeRegistries.BLOCKS.getKey(level.getBlockState(pos).getBlock());
         return id == null ? "minecraft:air" : id.toString();
     }
+
+    /**
+     * The real replaceability answer (grass, flowers, snow layers, fluids). Outside the
+     * build height nothing is placeable. Shared by both world views (preview==apply).
+     */
+    public static boolean isReplaceable(LevelReader level, int x, int y, int z) {
+        BlockPos pos = new BlockPos(x, y, z);
+        if (level.isOutsideBuildHeight(pos)) return false;
+        return level.getBlockState(pos).canBeReplaced();
+    }
 }

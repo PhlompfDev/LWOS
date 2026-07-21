@@ -29,7 +29,7 @@ class ShapeToolTest {
     void twoClickShapeCompletesAfterOneAnchor() {
         ShapeTool t = new ShapeTool();
         t.addAnchor(new GridPos(0, 0, 0), false);
-        assertTrue(t.isComplete(ShapeMode.WALL));   // next click commits
+        assertTrue(t.isComplete(ShapeMode.RECT));   // next click commits
         assertFalse(t.isComplete(ShapeMode.CUBE));  // cube needs a second anchor first
         t.addAnchor(new GridPos(2, 0, 2), false);
         assertEquals(ShapeTool.State.BASE_DONE, t.state());
@@ -49,7 +49,7 @@ class ShapeToolTest {
     void toolTypeMapping() {
         assertNull(ToolType.PATH.shapeMode());
         assertNull(ToolType.TERRAIN.shapeMode());
-        assertEquals(ShapeMode.WALL, ToolType.WALL.shapeMode());
+        assertEquals(ShapeMode.RECT, ToolType.RECT.shapeMode());
         assertEquals(0, ToolType.PATH.iconIndex());
         assertEquals(1, ToolType.TERRAIN.iconIndex());
         assertEquals(7, ToolType.SPHERE.iconIndex());
@@ -59,9 +59,9 @@ class ShapeToolTest {
     void managerRoutesShapes() {
         ToolManager tm = ToolManager.get();
         if (!tm.isEnabled()) tm.toggleEnabled();
-        while (tm.selected() != ToolType.WALL) tm.cycle(1);
+        while (tm.selected() != ToolType.RECT) tm.cycle(1);
         assertTrue(tm.isShapeToolActive());
-        assertEquals(ShapeMode.WALL, tm.activeShapeMode());
+        assertEquals(ShapeMode.RECT, tm.activeShapeMode());
         assertFalse(tm.isPathToolActive());
         tm.currentShape().addAnchor(new GridPos(0, 0, 0), false);
         tm.cycle(1); // switching tools abandons the gesture

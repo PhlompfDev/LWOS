@@ -2,71 +2,65 @@ package com.lwos.client;
 
 import com.lwos.plan.GridPos;
 import com.lwos.shape.ShapeGeometry;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Construction-plane targeting (spec §2): after the first anchor, aim stops raycasting
- * terrain and intersects the camera ray with the shape's construction plane/axis so
- * shapes stretch into open air. All doubles until the final snap; results clamped to
- * the shape extent cap around the anchor.
+ * Free-corner targeting (free-placement revision 2026-07-21). Every corner is a real
+ * 3D point: the terrain raycast wins wherever you look (floor, ceiling, wall), and
+ * aiming at open air falls back to a point along the view ray at the same distance as
+ * the anchor — so shapes stretch through air without being locked to any axis. The
+ * old per-mode construction planes (horizontal-only floors, latched wall normals) are
+ * gone; shape orientation now comes from the corners themselves (ShapeGeometry.rectAuto)
+ * or the clicked face (circle axis).
  */
 public final class ShapeAim {
     private static final double EPS = 1e-5;
-    /** Cap on the ray parameter so near-parallel aims can't produce kilometer hits. */
-    private static final double MAX_T = 256.0;
+    private static final double MAX_REACH = 96.0;
 
     private ShapeAim() { }
 
-    /** Endpoint on the axis line (through anchor) the ray passes closest to. */
-    public static GridPos aimLine(Vec3 eye, Vec3 look, GridPos anchor) {
-        GridPos best = null;
-        double bestDist = Double.MAX_VALUE;
-        double[][] axes = { {1, 0, 0}, {0, 1, 0}, {0, 0, 1} };
-        for (double[] ax : axes) {
-            double[] r = closestOnLine(eye, look, anchor, ax[0], ax[1], ax[2]);
-            if (r == null) continue;
-            if (r[1] < bestDist) {
-                bestDist = r[1];
-                int d = (int) Math.round(r[0]);
-                best = clamp(anchor, new GridPos(
-                        anchor.x() + (int) (ax[0] * d),
-                        anchor.y() + (int) (ax[1] * d),
-                        anchor.z() + (int) (ax[2] * d)));
-            }
+    /**
+     * Stretch-phase target: terrain hit (face-adjacent for place, hit block for break),
+     * or the air point at the eye→anchor distance along the ray. Extent-clamped around
+     * the anchor. Null only in degenerate cases.
+     */
+    public static GridPos freeAim(Minecraft mc, Vec3 eye, Vec3 look, GridPos anchor, boolean forBreak) {
+        Vec3 end = eye.add(look.scale(MAX_REACH));
+        BlockHitResult hit = mc.level.clip(new ClipContext(
+                eye, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
+        if (hit.getType() == HitResult.Type.BLOCK) {
+            BlockPos pos = forBreak ? hit.getBlockPos() : hit.getBlockPos().relative(hit.getDirection());
+            return clamp(anchor, new GridPos(pos.getX(), pos.getY(), pos.getZ()));
         }
-        return best;
-    }
-
-    /** Ray ∩ horizontal plane y = anchor.y (block-center plane), snapped and clamped. */
-    public static GridPos aimPlaneY(Vec3 eye, Vec3 look, GridPos anchor) {
-        if (Math.abs(look.y) < EPS) return null;
-        double t = (anchor.y() + 0.5 - eye.y) / look.y;
-        if (t <= 0 || t > MAX_T) return null;
+        // Open air: hold the anchor's distance so the corner rides the view ray predictably.
+        double ax = anchor.x() + 0.5 - eye.x, ay = anchor.y() + 0.5 - eye.y, az = anchor.z() + 0.5 - eye.z;
+        double t = Math.max(2.0, Math.sqrt(ax * ax + ay * ay + az * az));
         return clamp(anchor, new GridPos(
                 (int) Math.floor(eye.x + look.x * t),
-                anchor.y(),
+                (int) Math.floor(eye.y + look.y * t),
                 (int) Math.floor(eye.z + look.z * t)));
     }
 
-    /** Ray ∩ vertical plane through the anchor (normal X or Z), snapped and clamped. */
-    public static GridPos aimWall(Vec3 eye, Vec3 look, GridPos anchor, boolean normalIsX) {
-        double denom = normalIsX ? look.x : look.z;
-        if (Math.abs(denom) < EPS) return null;
-        double planeCoord = (normalIsX ? anchor.x() : anchor.z()) + 0.5;
-        double t = (planeCoord - (normalIsX ? eye.x : eye.z)) / denom;
-        if (t <= 0 || t > MAX_T) return null;
-        return clamp(anchor, normalIsX
-                ? new GridPos(anchor.x(), (int) Math.floor(eye.y + look.y * t), (int) Math.floor(eye.z + look.z * t))
-                : new GridPos((int) Math.floor(eye.x + look.x * t), (int) Math.floor(eye.y + look.y * t), anchor.z()));
-    }
-
-    /** Closest-approach Y on the vertical line through corner — cube extrusion height. */
-    public static Integer aimHeight(Vec3 eye, Vec3 look, GridPos corner) {
-        double[] r = closestOnLine(eye, look, corner, 0, 1, 0);
+    /**
+     * Cube-extrusion target: closest-approach coordinate along the world axis
+     * ({@code axisOrdinal} 0=X/1=Y/2=Z) through {@code corner}. Null when the ray is
+     * parallel to the axis or the approach is behind the camera.
+     */
+    public static GridPos aimAlongAxis(Vec3 eye, Vec3 look, GridPos corner, int axisOrdinal) {
+        double ax = axisOrdinal == 0 ? 1 : 0, ay = axisOrdinal == 1 ? 1 : 0, az = axisOrdinal == 2 ? 1 : 0;
+        double[] r = closestOnLine(eye, look, corner, ax, ay, az);
         if (r == null) return null;
-        int dy = (int) Math.round(r[0]);
-        dy = Math.max(-ShapeGeometry.MAX_EXTENT, Math.min(ShapeGeometry.MAX_EXTENT, dy));
-        return corner.y() + dy;
+        int d = (int) Math.round(r[0]);
+        d = Math.max(-ShapeGeometry.MAX_EXTENT, Math.min(ShapeGeometry.MAX_EXTENT, d));
+        return new GridPos(
+                corner.x() + (int) ax * d,
+                corner.y() + (int) ay * d,
+                corner.z() + (int) az * d);
     }
 
     /**
@@ -86,7 +80,7 @@ public final class ShapeAim {
         if (Math.abs(denom) < EPS) return null; // ray parallel to the axis
         double t = (b * e - c * d) / denom;     // along the ray
         double s = (a * e - b * d) / denom;     // along the axis line
-        if (t <= 0 || t > MAX_T) return null;
+        if (t <= 0 || t > 256.0) return null;
         double px = eye.x + look.x * t - (bx + ax * s);
         double py = eye.y + look.y * t - (by + ay * s);
         double pz = eye.z + look.z * t - (bz + az * s);

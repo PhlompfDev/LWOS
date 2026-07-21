@@ -13,8 +13,7 @@ public enum ToolType {
     PATH("Path", 0, null),
     TERRAIN("Terrain", 1, null),
     LINE("Line", 2, ShapeMode.LINE),
-    WALL("Wall", 3, ShapeMode.WALL),
-    FLOOR("Floor", 4, ShapeMode.FLOOR),
+    RECT("Rect", 4, ShapeMode.RECT),   // floor-diamond glyph reads "plane"; wall glyph (3) retired
     CUBE("Cube", 5, ShapeMode.CUBE),
     CIRCLE("Circle", 6, ShapeMode.CIRCLE),
     SPHERE("Sphere", 7, ShapeMode.SPHERE);
