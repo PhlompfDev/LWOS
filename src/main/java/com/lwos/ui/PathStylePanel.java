@@ -169,7 +169,8 @@ public final class PathStylePanel implements IGuiOverlay {
             slots.add(new SlotRect(core, i, x, y));
             int sx = x + BlockSlotWidget.SIZE + 6;
             int sw = right - sx;
-            new SliderWidget(sx, y + 12, sw, wMin, wMax, e.weight()).render(g, 0, 0);
+            new SliderWidget(sx, y + 12, sw, wMin, wMax, e.weight())
+                    .render(g, (core ? "coreWeight:" : "edgeWeight:") + i);
             sliders.add(new SliderRect(core ? "coreWeight" : "edgeWeight", i, sx, y + 12, sw, wMin, wMax));
             y += BlockSlotWidget.SIZE + 6;
         }
@@ -181,7 +182,7 @@ public final class PathStylePanel implements IGuiOverlay {
         g.drawString(font, label, x, y, JournalTheme.INK_FADED, false);
         g.drawString(font, String.format("%.2f", value), x + w - 28, y, JournalTheme.WAX, false);
         int sy = y + 11;
-        new SliderWidget(x, sy, w, min, max, value).render(g, 0, 0);
+        new SliderWidget(x, sy, w, min, max, value).render(g, target + ":" + index);
         sliders.add(new SliderRect(target, index, x, sy, w, min, max));
         return sy + 12;
     }

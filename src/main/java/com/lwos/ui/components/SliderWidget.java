@@ -1,16 +1,36 @@
 package com.lwos.ui.components;
 
+import com.lwos.client.anim.Spring;
 import com.lwos.ui.theme.JournalTheme;
 import net.minecraft.client.gui.GuiGraphics;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * A custom-rendered slider for the frosted-glass panel: a thin track, an accent fill, and a round
  * knob — no vanilla button textures. Value↔pixel mapping is pure and unit-tested; rendering is
  * verified in the panel playtest. Colors and textures are drawn through the journal theme.
+ *
+ * <p>Knob glide (spec: wheel-redesign-ui-tweens §4): widget instances are rebuilt every frame, so
+ * the knob's spring lives in a static id-keyed registry. The spring is presentation-only — value
+ * logic and hit-testing stay exact; only where the knob/fill DRAW moves through the spring.
  */
 public final class SliderWidget {
 
     private static final int TRACK_H    = 6;
+
+    /** Snappier than the house feel: drags should track closely, preset jumps still glide. */
+    private static final float GLIDE_ZETA = 0.9f;
+    private static final float GLIDE_HZ = 6.0f;
+
+    private static final class Glide {
+        final Spring spring = new Spring(GLIDE_ZETA, GLIDE_HZ);
+        long lastNanos = 0;
+        boolean fresh = true;
+    }
+
+    private static final Map<String, Glide> GLIDES = new HashMap<>();
 
     private final int x, y, width;
     private final double min, max;
@@ -46,7 +66,30 @@ public final class SliderWidget {
     }
 
     public void render(GuiGraphics g, int mouseX, int mouseY) {
-        int knobX = pixelFromValue(value, x, width, min, max);
+        drawAt(g, pixelFromValue(value, x, width, min, max));
+    }
+
+    /**
+     * Renders with the knob gliding through a persistent spring keyed by {@code springId}
+     * (stable per slider across frames). New ids snap so panels don't animate on first open.
+     */
+    public void render(GuiGraphics g, String springId) {
+        int exactX = pixelFromValue(value, x, width, min, max);
+        Glide glide = GLIDES.computeIfAbsent(springId, k -> new Glide());
+        if (glide.fresh) {
+            glide.spring.snapTo(exactX);
+            glide.fresh = false;
+        }
+        glide.spring.setTarget(exactX);
+        long now = System.nanoTime();
+        float dt = glide.lastNanos == 0 ? 1f / 60f : (now - glide.lastNanos) / 1_000_000_000f;
+        glide.lastNanos = now;
+        glide.spring.update(dt);
+        int knobX = Math.max(x, Math.min(x + width, Math.round(glide.spring.value())));
+        drawAt(g, knobX);
+    }
+
+    private void drawAt(GuiGraphics g, int knobX) {
         // 8px groove art drawn 1px above the 6px logical track; hitbox (y-4 .. y+TRACK_H+4) unchanged.
         JournalTheme.blitH3(g, JournalTheme.TRACK_U, JournalTheme.TRACK_V, JournalTheme.TRACK_W,
                 JournalTheme.TRACK_TEX_H, JournalTheme.TRACK_CAP, x, y - 1, width, 8);
