@@ -35,6 +35,12 @@ public class ToolManager {
         shapeTool.clear(); // switching tools abandons the gesture (anchors are mode-specific)
     }
 
+    /** Direct selection (wheel hover-pick, spec §1). Same gesture-abandon rule as cycle. */
+    public void select(ToolType type) {
+        selected = type;
+        shapeTool.clear();
+    }
+
     public ToolType selected() { return selected; }
 
     public boolean isPathToolActive() { return enabled && selected == ToolType.PATH; }
